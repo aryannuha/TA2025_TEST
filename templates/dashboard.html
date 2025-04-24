@@ -2,10 +2,47 @@
 <html lang="en">
 <head>
     <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
 </head>
 <body>
-    <h1>Welcome, {{ user }}!</h1>
-    <a href="/dash">Go to Dash App</a>
-    <a href="/logout">Logout</a>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <div class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24">
+                    <path d="M12,2L4,6v12l8,4l8-4V6L12,2z M18,16.84l-6,3l-6-3V7.16l6-3l6,3V16.84z M12,5.5L7.5,8L12,10.5L16.5,8L12,5.5z"></path>
+                    <path d="M12,11.5v4c1.38,0,2.5-0.9,2.5-2s-1.12-2-2.5-2z"></path>
+                    <circle cx="9" cy="14" r="1"></circle>
+                    <circle cx="15" cy="14" r="1"></circle>
+                </svg>
+            </div>
+            <h1>Greenhouse Control</h1>
+        </div>
+
+        <div class="user-welcome">
+            Welcome, {{ user }}!
+        </div>
+
+        <div class="dashboard-actions">
+            <a href="/dash" class="action-button">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M0 0h24v24H0V0z" fill="none"/>
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
+                    <path d="M7 12h2v5H7zm4-7h2v12h-2zm4 4h2v8h-2z"/>
+                </svg>
+                Dashboard
+            </a>
+            <a href="/logout" class="action-button">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M0 0h24v24H0V0z" fill="none"/>
+                    <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5v4h2V5h12v14H7v-2H5v4h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                </svg>
+                Logout
+            </a>
+        </div>
+
+        <div class="footer">
+            <p>Microclimate Greenhouse Monitoring System</p>
+        </div>
+    </div>
 </body>
 </html>
