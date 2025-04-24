@@ -1,0 +1,141 @@
+:root {
+    --bg-color: #e6f0e6;
+    --shadow-dark: #c5d8c5;
+    --shadow-light: #ffffff;
+    --accent-color: #4caf50;
+    --text-color: #2e582e;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 30px;
+    border-radius: 20px;
+    background: var(--bg-color);
+    box-shadow: 8px 8px 15px var(--shadow-dark),
+                -8px -8px 15px var(--shadow-light);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-header h1 {
+    color: var(--text-color);
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.login-header .logo {
+    margin-bottom: 15px;
+}
+
+.login-header .logo svg {
+    fill: var(--accent-color);
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-color);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.input-container {
+    position: relative;
+}
+
+.form-control {
+    width: 100%;
+    padding: 15px 20px;
+    border: none;
+    border-radius: 12px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 16px;
+    outline: none;
+    box-shadow: inset 3px 3px 7px var(--shadow-dark),
+                inset -3px -3px 7px var(--shadow-light);
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    box-shadow: inset 4px 4px 8px var(--shadow-dark),
+                inset -4px -4px 8px var(--shadow-light);
+}
+
+.form-control::placeholder {
+    color: #88a888;
+}
+
+.btn {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 12px;
+    background: var(--bg-color);
+    color: var(--accent-color);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 5px 5px 10px var(--shadow-dark),
+                -5px -5px 10px var(--shadow-light);
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.btn:hover {
+    box-shadow: 6px 6px 12px var(--shadow-dark),
+                -6px -6px 12px var(--shadow-light);
+}
+
+.btn:active {
+    box-shadow: inset 4px 4px 8px var(--shadow-dark),
+                inset -4px -4px 8px var(--shadow-light);
+}
+
+.footer {
+    margin-top: 25px;
+    text-align: center;
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+ /* Alert styling */
+ .alert {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: var(--error-color);
+    font-weight: 500;
+}
+
+.error-message {
+    padding: 10px;
+    border-radius: 10px;
+    background: var(--bg-color);
+    box-shadow: inset 3px 3px 5px var(--shadow-dark),
+                inset -3px -3px 5px var(--shadow-light);
+}
