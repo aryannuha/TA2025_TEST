@@ -1,6 +1,6 @@
 # Author: Ammar Aryan Nuha
 # Deklarasi library yang digunakan
-from flask import Flask, render_template, redirect, url_for, request, flash, session
+from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import dash
 import dash_bootstrap_components as dbc
@@ -17,17 +17,16 @@ from dash.dependencies import Input, Output
 from pages.mcs_dashboard_all import main_dashboard_layout, main_dashboard_path
 from pages.co2 import co2_layout
 from pages.th_in import th_in_layout
-from pages.th_out import th_out_layout
-from pages.par import par_layout
-from pages.windspeed import windspeed_layout
-from pages.rainfall import rainfall_layout
-from pages.alarm import alarm_layout
-from pages.gps import gps_layout
+from pages.th_out import th_out_layout  
+from pages.par import par_layout    
+from pages.windspeed import windspeed_layout    
+from pages.rainfall import rainfall_layout  
+from pages.alarm import alarm_layout  
+from pages.gps import gps_layout  
 
 # Initialize Flask app
 server = Flask(__name__)
-server.secret_key = secrets.token_hex(
-    32)  # Generates a 64-character hexadecimal key
+server.secret_key = secrets.token_hex(32)  # Generates a 64-character hexadecimal key
 
 # Menyimpan daftar halaman multipage
 pages = {
@@ -49,23 +48,18 @@ login_manager.init_app(server)
 # User data for simplicity (use a database in production)
 users = {'engineer': {'password': 'engineer'}}
 
-
 class User(UserMixin):
-
     def __init__(self, id):
         self.id = id
-
 
 @login_manager.user_loader
 def load_user(user_id):
     return User(user_id)
 
-
 # Flask routes
 @server.route('/')
 def home():
     return redirect(url_for('login'))
-
 
 @server.route('/login', methods=['GET', 'POST'])
 def login():
@@ -76,7 +70,7 @@ def login():
             user = User(username)
             login_user(user)
             return redirect(url_for('dashboard'))
-
+        
         # Tambahkan flash & redirect untuk POST-REDIRECT-GET
         flash('Invalid credentials')
         return redirect(url_for('login'))
@@ -89,48 +83,37 @@ def login():
 def dashboard():
     return render_template('dashboard.html', user=current_user.id)
 
-
 # @server.route('/dash/')
 # @login_required
 # def dash_home():
 #     return redirect('/dash/')
-
 
 @server.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
-
-
 # end of flask route
 
 # Integrate Dash app
-app_dash = dash.Dash(__name__,
-                     server=server,
-                     url_base_pathname='/dash/',
-                     external_stylesheets=[dbc.themes.BOOTSTRAP],
-                     title='MCS Dashboard',
-                     suppress_callback_exceptions=True)
-
-
+app_dash = dash.Dash(__name__, server=server, url_base_pathname='/dash/', external_stylesheets=[dbc.themes.BOOTSTRAP], title='MCS Dashboard', suppress_callback_exceptions=True)
+ 
 @app_dash.server.before_request
 def restrict_dash_pages():
-    if request.path.startswith('/dash') and not session.get('_user_id'):
+    if not current_user.is_authenticated and request.path.startswith('/dash'):
         return redirect(url_for('login'))
-
 
 # data storage
 data = {
-    'waktu': [],  # Time values
-    'suhu': [],  # Temperature values 
-    'kelembaban': [],  # Humidity values
-    'suhu_out': [],  # Outdoor temperature values
-    'kelembaban_out': [],  # Outdoor humidity values
-    'co2': [],  # CO2 values
-    'windspeed': [],  # Wind speed values
-    'rainfall': [],  # Rainfall values
-    'par': []  # Rainfall values
+    'waktu': [],      # Time values
+    'kodeDataSuhuIn': [],       # Temperature values 
+    'kodeDataKelembabanIn': [], # Humidity values
+    'kodeDataSuhuOut': [],   # Outdoor temperature values
+    'kodeDataKelembabanOut': [], # Outdoor humidity values
+    'kodeDataCo2': [],        # CO2 values
+    'kodeDataWindspeed': [],  # Wind speed values
+    'kodeDataRainfall': [],    # Rainfall values
+    'kodeDataPar': []    # PAR values
 }
 
 # MQTT Configuration
@@ -154,53 +137,41 @@ TOPIC_WINDSPEED = "mcs/kodeDataWindspeed"
 TOPIC_RAINFALL = "mcs/kodeDataRainfall"
 TOPIC_PAR = "mcs/kodeDataPar"
 
-
 # MQTT Callback
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print("Connected to HiveMQ Broker")
         client.subscribe([(TOPIC_SUHU, 0), (TOPIC_KELEMBABAN, 0),
                           (TOPIC_SUHU_OUT, 0), (TOPIC_KELEMBABAN_OUT, 0),
-                          (TOPIC_CO2, 0), (TOPIC_WINDSPEED, 0),
-                          (TOPIC_RAINFALL, 0), (TOPIC_PAR, 0)
-                          ])  # Subscribe ke topik suhu & kelembaban
+                          (TOPIC_CO2, 0), (TOPIC_WINDSPEED, 0), 
+                          (TOPIC_RAINFALL, 0), (TOPIC_PAR, 0)])  # Subscribe ke topik suhu & kelembaban
     else:
         print(f"Failed to connect, return code {rc}")
-
 
 def on_message(client, userdata, msg):
     global data
     try:
-        topic = msg.topic.split(
-            '/'
-        )[-1]  # Get the last part of the topic (e.g., 'suhu' from 'esp32/suhu')
+        topic = msg.topic.split('/')[-1]  # Get the last part of the topic (e.g., 'suhu' from 'esp32/suhu')
         payload = float(msg.payload.decode())
-
+        
         current_time = datetime.now().strftime('%H:%M:%S')
-
+        
         # Initialize lists if they don't exist
-        if topic in [
-                'suhu', 'kelembaban', 'suhu_out', 'kelembaban_out', 'co2',
-                'windspeed', 'rainfall', 'par'
-        ]:
+        if topic in ['kodeDataSuhuIn', 'kodeDataKelembabanIn', 'kodeDataSuhuOut', 'kodeDataKelembabanOut',
+                      'kodeDataCo2', 'kodeDataWindspeed', 'kodeDataRainfall', 'kodeDataPar']:
             if len(data[topic]) >= 20:  # Keep only last 20 points
                 data[topic] = data[topic][1:]
             data[topic].append(payload)
-
+            
             # Keep waktu list in sync with the latest data addition
             # This ensures all lists have the same length
-            if topic == 'suhu':  # Only update waktu when temperature data comes in
+            if topic == 'kodeDataSuhuIn':  # Only update waktu when temperature data comes in
                 if len(data['waktu']) >= 20:
                     data['waktu'] = data['waktu'][1:]
                 data['waktu'].append(current_time)
 
-            # Debug output
-            # print(f"Received {topic} data: {payload}, time: {current_time}")
-            # print(f"Data lengths: waktu={len(data['waktu'])}, {topic}={len(data[topic])}")
-
     except Exception as e:
         print(f"Error processing MQTT message: {e}")
-
 
 # MQTT Client
 client = mqtt.Client()
@@ -217,72 +188,55 @@ threading.Thread(target=client.loop_forever, daemon=True).start()
 app_dash.layout = html.Div([
     # CSS styles for the app
     html.Link(rel='stylesheet', href='/static/style.css'),
+
     dcc.Location(id='url', refresh=False),
-    html.Div(id='page-content', children=[]),
+    html.Div(id='page-content', children=[]),    
 ])
 
-
 # Callback Routing berdasarkan URL
-@app_dash.callback(Output('page-content', 'children'),
-                   Input('url', 'pathname'))
+@app_dash.callback(
+    Output('page-content', 'children'),
+    Input('url', 'pathname')
+)
 def render_page_content(pathname):
     return pages.get(pathname, html.Div("404 - Page not found"))
 
-
 # Callback for main dashboard
-@app_dash.callback([
-    Output({
-        'type': 'sensor-value',
-        'id': 'suhu-display-indoor'
-    }, 'children'),
-    Output({
-        'type': 'sensor-value',
-        'id': 'kelembaban-display-indoor'
-    }, 'children'),
-    Output({
-        'type': 'sensor-value',
-        'id': 'suhu-display-outdoor'
-    }, 'children'),
-    Output({
-        'type': 'sensor-value',
-        'id': 'kelembaban-display-outdoor'
-    }, 'children'),
-    Output({
-        'type': 'sensor-value',
-        'id': 'co2-display'
-    }, 'children'),
-    Output({
-        'type': 'sensor-value',
-        'id': 'windspeed-display'
-    }, 'children'),
-    Output({
-        'type': 'sensor-value',
-        'id': 'rainfall-display'
-    }, 'children'),
-    Output({
-        'type': 'sensor-value',
-        'id': 'par-display'
-    }, 'children')
-], [Input('interval_mcs', 'n_intervals')])
+@app_dash.callback(
+    [Output({'type': 'sensor-value', 'id': 'suhu-display-indoor'}, 'children'),
+     Output({'type': 'sensor-value', 'id': 'kelembaban-display-indoor'}, 'children'),
+     Output({'type': 'sensor-value', 'id': 'suhu-display-outdoor'}, 'children'),
+     Output({'type': 'sensor-value', 'id': 'kelembaban-display-outdoor'}, 'children'),
+     Output({'type': 'sensor-value', 'id': 'co2-display'}, 'children'),
+     Output({'type': 'sensor-value', 'id': 'windspeed-display'}, 'children'),
+     Output({'type': 'sensor-value', 'id': 'rainfall-display'}, 'children'),
+     Output({'type': 'sensor-value', 'id': 'par-display'}, 'children')],
+    [Input('interval_mcs', 'n_intervals')]
+)
 def update_main_dashboard(n):
     try:
-        suhu = data['suhu'][-1] if data['suhu'] else 0
-        kelembaban = data['kelembaban'][-1] if data['kelembaban'] else 0
-        suhu_out = data['suhu_out'][-1] if data['suhu_out'] else 0
-        kelembaban_out = data['kelembaban_out'][-1] if data[
-            'kelembaban_out'] else 0
-        co2 = data['co2'][-1] if data['co2'] else 0
-        windspeed = data['windspeed'][-1] if data['windspeed'] else 0
-        rainfall = data['rainfall'][-1] if data['rainfall'] else 0
-        par = data['par'][-1] if data['par'] else 0
+        suhu = data['kodeDataSuhuIn'][-1] if data['kodeDataSuhuIn'] else 0
+        kelembaban = data['kodeDataKelembabanIn'][-1] if data['kodeDataKelembabanIn'] else 0
+        suhu_out = data['kodeDataSuhuOut'][-1] if data['kodeDataSuhuOut'] else 0
+        kelembaban_out = data['kodeDataKelembabanOut'][-1] if data['kodeDataKelembabanOut'] else 0
+        co2 = data['kodeDataCo2'][-1] if data['kodeDataCo2'] else 0
+        windspeed = data['kodeDataWindspeed'][-1] if data['kodeDataWindspeed'] else 0
+        rainfall = data['kodeDataRainfall'][-1] if data['kodeDataRainfall'] else 0
+        par = data['kodeDataPar'][-1] if data['kodeDataPar'] else 0
 
-        return (f" {suhu}°C", f" {kelembaban}%", f" {suhu_out}°C",
-                f" {kelembaban_out}%", f" {co2}PPM", f" {windspeed}m/s",
-                f" {rainfall}mm", f" {par}μmol/m²/s")
+        return (
+            f" {suhu}°C",
+            f" {kelembaban}%",
+            f" {suhu_out}°C",
+            f" {kelembaban_out}%",
+            f" {co2}PPM",
+            f" {windspeed}m/s",
+            f" {rainfall}mm",
+            f" {par}μmol/m²/s"
+        )
     except Exception as e:
         print(f"Error in update_main_dashboard: {e}")
         return "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
-
 
 # Separate callback for th_in layout - Completely revised version
 @app_dash.callback(
@@ -319,12 +273,12 @@ def update_th_in_dashboard(n):
         ))
         
         # Check if we have data
-        if not data['suhu'] or not data['kelembaban'] or not data['waktu']:
+        if not data['kodeDataSuhuIn'] or not data['kodeDataKelembabanIn'] or not data['waktu']:
             return suhu_value, kelembaban_value, empty_temp_fig, empty_humid_fig
         
         # Get the latest values
-        suhu = data['suhu'][-1] if data['suhu'] else 0
-        kelembaban = data['kelembaban'][-1] if data['kelembaban'] else 0
+        suhu = data['kodeDataSuhuIn'][-1] if data['kodeDataSuhuIn'] else 0
+        kelembaban = data['kodeDataKelembabanIn'][-1] if data['kodeDataKelembabaIn'] else 0
         suhu_value = f"{suhu}°C"
         kelembaban_value = f"{kelembaban}%"
         
@@ -333,16 +287,16 @@ def update_th_in_dashboard(n):
 
         try:
             # Ensure we have data to work with
-            if len(data['waktu']) > 3 and len(data['suhu']) > 3:
+            if len(data['waktu']) > 3 and len(data['kodeDataSuhuIn']) > 3:
                 # We'll use only 3 data points for simplicity
                 num_points = 3
                 
                 # Select evenly spaced indices from the data
-                indices = np.linspace(0, min(len(data['waktu']), len(data['suhu']))-1, num_points, dtype=int)
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kodeDataSuhuIn']))-1, num_points, dtype=int)
                 
                 # Get the selected timestamps and temperature values
                 selected_timestamps = [data['waktu'][i] for i in indices]
-                selected_values = [data['suhu'][i] for i in indices]
+                selected_values = [data['kodeDataSuhuIn'][i] for i in indices]
                 
                 # Create x values (0, 1, 2) for plotting
                 x_plot = list(range(num_points))
@@ -407,16 +361,16 @@ def update_th_in_dashboard(n):
 
         try:
             # Ensure we have data to work with
-            if len(data['waktu']) > 3 and len(data['kelembaban']) > 3:
+            if len(data['waktu']) > 3 and len(data['kodeDataKelembabanIn']) > 3:
                 # We'll use only 3 data points for simplicity
                 num_points = 3
                 
                 # Select evenly spaced indices from the data
-                indices = np.linspace(0, min(len(data['waktu']), len(data['kelembaban']))-1, num_points, dtype=int)
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kodeDataKelembabanIn']))-1, num_points, dtype=int)
                 
                 # Get the selected timestamps and temperature values
                 selected_timestamps = [data['waktu'][i] for i in indices]
-                selected_values = [data['kelembaban'][i] for i in indices]
+                selected_values = [data['kodeDataKelembabanIn'][i] for i in indices]
                 
                 # Create x values (0, 1, 2) for plotting
                 x_plot = list(range(num_points))
@@ -529,12 +483,12 @@ def update_th_out_dashboard(n):
         ))
         
         # Check if we have data
-        if not data['suhu_out'] or not data['kelembaban_out'] or not data['waktu']:
+        if not data['kodeDataSuhuOut'] or not data['kodeDataKelembabanOut'] or not data['waktu']:
             return suhu_value, kelembaban_value, empty_temp_fig, empty_humid_fig
         
         # Get the latest values
-        suhu = data['suhu_out'][-1] if data['suhu_out'] else 0
-        kelembaban = data['kelembaban_out'][-1] if data['kelembaban_out'] else 0
+        suhu = data['kodeDataSuhuOut'][-1] if data['kodeDataSuhuOut'] else 0
+        kelembaban = data['kodeDataKelembabanOut'][-1] if data['kodeDataKelembabanOut'] else 0
         suhu_value = f"{suhu}°C"
         kelembaban_value = f"{kelembaban}%"
 
@@ -543,16 +497,16 @@ def update_th_out_dashboard(n):
 
         try:
             # Ensure we have data to work with
-            if len(data['waktu']) > 3 and len(data['suhu_out']) > 3:
+            if len(data['waktu']) > 3 and len(data['kodeDataSuhuOut']) > 3:
                 # We'll use only 3 data points for simplicity
                 num_points = 3
                 
                 # Select evenly spaced indices from the data
-                indices = np.linspace(0, min(len(data['waktu']), len(data['suhu_out']))-1, num_points, dtype=int)
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kodeDataSuhuOut']))-1, num_points, dtype=int)
                 
                 # Get the selected timestamps and temperature values
                 selected_timestamps = [data['waktu'][i] for i in indices]
-                selected_values = [data['suhu_out'][i] for i in indices]
+                selected_values = [data['kodeDataSuhuOut'][i] for i in indices]
                 
                 # Create x values (0, 1, 2) for plotting
                 x_plot = list(range(num_points))
@@ -617,16 +571,16 @@ def update_th_out_dashboard(n):
 
         try:
             # Ensure we have data to work with
-            if len(data['waktu']) > 3 and len(data['kelembaban_out']) > 3:
+            if len(data['waktu']) > 3 and len(data['kodeDataKelembabanOut']) > 3:
                 # We'll use only 3 data points for simplicity
                 num_points = 3
                 
                 # Select evenly spaced indices from the data
-                indices = np.linspace(0, min(len(data['waktu']), len(data['kelembaban_out']))-1, num_points, dtype=int)
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kodeDataKelembabanOut']))-1, num_points, dtype=int)
                 
                 # Get the selected timestamps and temperature values
                 selected_timestamps = [data['waktu'][i] for i in indices]
-                selected_values = [data['kelembaban_out'][i] for i in indices]
+                selected_values = [data['kodeDataKelembabanOut'][i] for i in indices]
                 
                 # Create x values (0, 1, 2) for plotting
                 x_plot = list(range(num_points))
@@ -726,11 +680,11 @@ def update_windspeed_dashboard(n):
         ))
         
         # Check if we have data
-        if not data['windspeed'] or not data['waktu']:
+        if not data['kodeDataWindspeed'] or not data['waktu']:
             return windspeed_value, empty_windspeed_fig
         
         # Get the latest values
-        windspeed = data['windspeed'][-1] if data['windspeed'] else 0
+        windspeed = data['kodeDataWindspeed'][-1] if data['kodeDataWindspeed'] else 0
         windspeed_value = f"{windspeed}m/s"
         
         # Create windspeed graph with properly aligned x and y values
@@ -738,16 +692,16 @@ def update_windspeed_dashboard(n):
 
         try:
             # Ensure we have data to work with
-            if len(data['waktu']) > 3 and len(data['windspeed']) > 3:
+            if len(data['waktu']) > 3 and len(data['kodeDataWindspeed']) > 3:
                 # We'll use only 3 data points for simplicity
                 num_points = 3
                 
                 # Select evenly spaced indices from the data
-                indices = np.linspace(0, min(len(data['waktu']), len(data['windspeed']))-1, num_points, dtype=int)
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kodeDataWindspeed']))-1, num_points, dtype=int)
                 
                 # Get the selected timestamps and temperature values
                 selected_timestamps = [data['waktu'][i] for i in indices]
-                selected_values = [data['windspeed'][i] for i in indices]
+                selected_values = [data['kodeDataWindspeed'][i] for i in indices]
                 
                 # Create x values (0, 1, 2) for plotting
                 x_plot = list(range(num_points))
@@ -847,11 +801,11 @@ def update_rainfall_dashboard(n):
         ))
         
         # Check if we have data
-        if not data['rainfall'] or not data['waktu']:
+        if not data['kodeDataRainfall'] or not data['waktu']:
             return rainfall_value, empty_rainfall_fig
         
         # Get the latest values
-        rainfall = data['rainfall'][-1] if data['rainfall'] else 0
+        rainfall = data['kodeDataRainfall'][-1] if data['kodeDataRainfall'] else 0
         rainfall_value = f"{rainfall}mm"
         
         # Create rainfall graph with properly aligned x and y values
@@ -859,16 +813,16 @@ def update_rainfall_dashboard(n):
 
         try:
             # Ensure we have data to work with
-            if len(data['waktu']) > 3 and len(data['rainfall']) > 3:
+            if len(data['waktu']) > 3 and len(data['kodeDataRainfall']) > 3:
                 # We'll use only 3 data points for simplicity
                 num_points = 3
                 
                 # Select evenly spaced indices from the data
-                indices = np.linspace(0, min(len(data['waktu']), len(data['rainfall']))-1, num_points, dtype=int)
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kodeDataRainfall']))-1, num_points, dtype=int)
                 
                 # Get the selected timestamps and temperature values
                 selected_timestamps = [data['waktu'][i] for i in indices]
-                selected_values = [data['rainfall'][i] for i in indices]
+                selected_values = [data['kodeDataRainfall'][i] for i in indices]
                 
                 # Create x values (0, 1, 2) for plotting
                 x_plot = list(range(num_points))
@@ -968,11 +922,11 @@ def update_co2_dashboard(n):
         ))
         
         # Check if we have data
-        if not data['co2'] or not data['waktu']:
+        if not data['kodeDataCo2'] or not data['waktu']:
             return co2_value, co2_fig
         
         # Get the latest values
-        co2 = data['co2'][-1] if data['co2'] else 0
+        co2 = data['kodeDataCo2'][-1] if data['kodeDataCo2'] else 0
         co2_value = f"{co2}PPM"
         
 
@@ -981,16 +935,16 @@ def update_co2_dashboard(n):
 
         try:
             # Ensure we have data to work with
-            if len(data['waktu']) > 3 and len(data['co2']) > 3:
+            if len(data['waktu']) > 3 and len(data['kodeDataCo2']) > 3:
                 # We'll use only 3 data points for simplicity
                 num_points = 3
                 
                 # Select evenly spaced indices from the data
-                indices = np.linspace(0, min(len(data['waktu']), len(data['co2']))-1, num_points, dtype=int)
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kodeDataCo2']))-1, num_points, dtype=int)
                 
                 # Get the selected timestamps and temperature values
                 selected_timestamps = [data['waktu'][i] for i in indices]
-                selected_values = [data['co2'][i] for i in indices]
+                selected_values = [data['kodeDataCo2'][i] for i in indices]
                 
                 # Create x values (0, 1, 2) for plotting
                 x_plot = list(range(num_points))
@@ -1090,11 +1044,11 @@ def update_par_dashboard(n):
         ))
         
         # Check if we have data
-        if not data['par'] or not data['waktu']:
+        if not data['kodeDataPar'] or not data['waktu']:
             return par_value, par_fig
         
         # Get the latest values
-        par = data['par'][-1] if data['par'] else 0
+        par = data['kodeDataPar'][-1] if data['kodeDataPar'] else 0
         par_value = f"{par}μmol/m²/s"
         
         # Create par graph with properly aligned x and y values
@@ -1102,16 +1056,16 @@ def update_par_dashboard(n):
 
         try:
             # Ensure we have data to work with
-            if len(data['waktu']) > 3 and len(data['par']) > 3:
+            if len(data['waktu']) > 3 and len(data['kodeDataPar']) > 3:
                 # We'll use only 3 data points for simplicity
                 num_points = 3
                 
                 # Select evenly spaced indices from the data
-                indices = np.linspace(0, min(len(data['waktu']), len(data['par']))-1, num_points, dtype=int)
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kodeDataPar']))-1, num_points, dtype=int)
                 
                 # Get the selected timestamps and temperature values
                 selected_timestamps = [data['waktu'][i] for i in indices]
-                selected_values = [data['par'][i] for i in indices]
+                selected_values = [data['kodeDataPar'][i] for i in indices]
                 
                 # Create x values (0, 1, 2) for plotting
                 x_plot = list(range(num_points))
@@ -1204,18 +1158,20 @@ def update_historical_table(n):
             idx = -(i+1)  # Index from the end of the list
             table_data.append({
                 "time": data['waktu'][idx] if idx < len(data['waktu']) else "",
-                "temperature_in_historical": f"{data['suhu'][idx]:.1f}%" if idx < len(data['suhu']) else "",
-                "humidity_in_historical": f"{data['kelembaban'][idx]:.1f}%" if idx < len(data['kelembaban']) else ""
+                "temperature_in_historical": f"{data['kodeDataSuhuIn'][idx]:.1f}%" if idx < len(data['kodeDataSuhuIn']) else "",
+                "humidity_in_historical": f"{data['kodeDataKelembabanIn'][idx]:.1f}%" if idx < len(data['kodeDataKelembabanIn']) else ""
             })
             
         return table_data
     except Exception as e:
         print(f"Error in update_historical_table: {e}")
         return [{}]
-
+    
 # Callbacks for Dash app
-@app_dash.callback(Output("logout-redirect", "href"),
-                   Input("logout-button", "n_clicks"))
+@app_dash.callback(
+    Output("logout-redirect", "href"),
+    Input("logout-button", "n_clicks")
+)
 def logout_redirect(n_clicks):
     if n_clicks:
         return "/logout"  # Redirects to Flask route
@@ -1223,4 +1179,4 @@ def logout_redirect(n_clicks):
 
 # Run server
 if __name__ == '__main__':
-    server.run(host='0.0.0.0', port=5000)
+    server.run(debug=True)
