@@ -278,7 +278,7 @@ def update_th_in_dashboard(n):
         
         # Get the latest values
         suhu = data['kodeDataSuhuIn'][-1] if data['kodeDataSuhuIn'] else 0
-        kelembaban = data['kodeDataKelembabanIn'][-1] if data['kodeDataKelembabaIn'] else 0
+        kelembaban = data['kodeDataKelembabanIn'][-1] if data['kodeDataKelembabanIn'] else 0
         suhu_value = f"{suhu}°C"
         kelembaban_value = f"{kelembaban}%"
         
