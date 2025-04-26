@@ -78,26 +78,13 @@ main_dashboard_layout = html.Div([
                 ], className="d-flex align-items-center")
             ], className="param-card"), width=4),
         ])
-    ], className="container my-3"),
+    ], className="container"),
 
     # TAMPILAN BOTTOM GRID
     html.Div([
         dbc.Row([
-            dbc.Col(html.Img(src="/static/img/pictogram_mcs.png", className="greenhouse-img"), width=6),
+            dbc.Col(html.Img(src="/static/img/pictogram_mcs_2.png", className="greenhouse-img"), width=6),
             dbc.Col([
-
-                # # Alarm Section
-                # html.Div([
-                #     dbc.Row([
-                #         dbc.Col([html.Div(className="alarm-dot red"), html.Div("T&H", className="text-center")]),
-                #         dbc.Col([html.Div(className="alarm-dot yellow"), html.Div("PAR", className="text-center")]),
-                #         dbc.Col([html.Div(className="alarm-dot green"), html.Div("CO2", className="text-center")]),
-                #         dbc.Col([html.Div(className="alarm-dot red"), html.Div("VOLT", className="text-center")]),
-                #         dbc.Col([html.Div(className="alarm-dot green"), html.Div("CURRENT", className="text-center")]),
-                #         dbc.Col([html.Div(className="alarm-dot yellow"), html.Div("POWER", className="text-center")])
-                #     ], className="text-center mb-3")
-                # ]),
-
                 # Table Section
                 html.Div([
                     html.H4("Real Time Table", className="text-center mb-2"),
