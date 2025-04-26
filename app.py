@@ -2,6 +2,7 @@
 # Deklarasi library yang digunakan
 from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+import pytz
 import dash
 import dash_bootstrap_components as dbc
 import secrets
@@ -153,8 +154,10 @@ def on_message(client, userdata, msg):
     try:
         topic = msg.topic.split('/')[-1]  # Get the last part of the topic (e.g., 'suhu' from 'esp32/suhu')
         payload = float(msg.payload.decode())
-        
-        current_time = datetime.now().strftime('%H:%M:%S')
+
+        # Replace 'Asia/Jakarta' with your desired timezone (e.g., your local timezone)
+        local_timezone = pytz.timezone('Asia/Jakarta')
+        current_time = datetime.now(pytz.utc).astimezone(local_timezone).strftime('%H:%M:%S')
         
         # Initialize lists if they don't exist
         if topic in ['kodeDataSuhuIn', 'kodeDataKelembabanIn', 'kodeDataSuhuOut', 'kodeDataKelembabanOut',
