@@ -145,14 +145,14 @@ ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
 
 # TOPIC = "esp32/+/+"  # Subscribe to all topics under esp32
-TOPIC_SUHU = "esp32/suhu"
-TOPIC_KELEMBABAN = "esp32/kelembaban"
-TOPIC_SUHU_OUT = "esp32/suhu_out"
-TOPIC_KELEMBABAN_OUT = "esp32/kelembaban_out"
-TOPIC_CO2 = "esp32/co2"
-TOPIC_WINDSPEED = "esp32/windspeed"
-TOPIC_RAINFALL = "esp32/rainfall"
-TOPIC_PAR = "esp32/par"
+TOPIC_SUHU = "mcs/kodeDataSuhuIn"
+TOPIC_KELEMBABAN = "mcs/kodeDataKelembabanIn"
+TOPIC_SUHU_OUT = "mcs/kodeDataSuhuOut"
+TOPIC_KELEMBABAN_OUT = "mcs/kodeDataKelembabanOut"
+TOPIC_CO2 = "mcs/kodeDataCo2"
+TOPIC_WINDSPEED = "mcs/kodeDataWindspeed"
+TOPIC_RAINFALL = "mcs/kodeDataRainfall"
+TOPIC_PAR = "mcs/kodeDataPar"
 
 
 # MQTT Callback
