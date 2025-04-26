@@ -285,147 +285,122 @@ def update_main_dashboard(n):
 
 
 # Separate callback for th_in layout - Completely revised version
-@app_dash.callback([
-    Output({
-        'type': 'sensor-value',
-        'id': 'suhu-display-indoor'
-    },
-           'children',
-           allow_duplicate=True),
-    Output({
-        'type': 'sensor-value',
-        'id': 'kelembaban-display-indoor'
-    },
-           'children',
-           allow_duplicate=True),
-    Output('temp-graph', 'figure'),
-    Output('humidity-graph', 'figure')
-], [Input('interval_thin', 'n_intervals')],
-                   prevent_initial_call=True)
+@app_dash.callback(
+    [Output({'type': 'sensor-value', 'id': 'suhu-display-indoor'}, 'children', allow_duplicate=True),
+     Output({'type': 'sensor-value', 'id': 'kelembaban-display-indoor'}, 'children', allow_duplicate=True),
+     Output('temp-graph', 'figure'),
+     Output('humidity-graph', 'figure')],
+    [Input('interval_thin', 'n_intervals')],
+    prevent_initial_call=True
+)
 def update_th_in_dashboard(n):
-    try:
-
-        # print(f"DEBUG: Data lengths - waktu: {len(data['waktu'] if 'waktu' in data else [])}, "
-        # f"suhu: {len(data['suhu'] if 'suhu' in data else [])}, "
-        # f"kelembaban: {len(data['kelembaban'] if 'kelembaban' in data else [])}")
-
+    try:        
         # Default values
         suhu_value = "N/A"
         kelembaban_value = "N/A"
-
+        
         # Empty figures with proper layout
-        empty_temp_fig = go.Figure(
-            layout=dict(title="Temperature Trend",
-                        xaxis=dict(title="Time"),
-                        yaxis=dict(title="Temperature (°C)", range=[0, 40]),
-                        margin=dict(l=40, r=20, t=40, b=30),
-                        height=150,
-                        plot_bgcolor='rgba(240, 240, 240, 0.9)'))
-
-        empty_humid_fig = go.Figure(
-            layout=dict(title="Humidity Trend",
-                        xaxis=dict(title="Time"),
-                        yaxis=dict(title="Humidity (%)", range=[40, 100]),
-                        margin=dict(l=40, r=20, t=40, b=30),
-                        height=150,
-                        plot_bgcolor='rgba(240, 240, 240, 0.9)'))
-
+        empty_temp_fig = go.Figure(layout=dict(
+            title="Temperature Trend",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Temperature (°C)", range=[0, 40]),
+            margin=dict(l=40, r=20, t=40, b=30),
+            height=150,
+            plot_bgcolor='rgba(240, 240, 240, 0.9)'
+        ))
+        
+        empty_humid_fig = go.Figure(layout=dict(
+            title="Humidity Trend",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Humidity (%)", range=[40, 100]),
+            margin=dict(l=40, r=20, t=40, b=30),
+            height=150,
+            plot_bgcolor='rgba(240, 240, 240, 0.9)'
+        ))
+        
         # Check if we have data
         if not data['suhu'] or not data['kelembaban'] or not data['waktu']:
             return suhu_value, kelembaban_value, empty_temp_fig, empty_humid_fig
-
+        
         # Get the latest values
         suhu = data['suhu'][-1] if data['suhu'] else 0
         kelembaban = data['kelembaban'][-1] if data['kelembaban'] else 0
         suhu_value = f"{suhu}°C"
         kelembaban_value = f"{kelembaban}%"
-
+        
         # Create temperature graph with properly aligned x and y values
         temp_fig = go.Figure()
 
         try:
             # Ensure we have data to work with
             if len(data['waktu']) > 3 and len(data['suhu']) > 3:
-                # Make sure x and y have the same length (this is crucial)
-                min_length = min(len(data['waktu']), len(data['suhu']))
-                timestamps = data['waktu'][:min_length]
-                suhu_values = data['suhu'][:min_length]
-
-                # Create evenly spaced x-indices
-                x_indices = list(range(min_length))
-
-                # Create interpolation points - keeping x as simple numeric indices
-                x_new = np.linspace(0, min_length - 1, num=300)
-
-                # Create the smooth interpolation
-                cs = interpolate.CubicSpline(x_indices,
-                                             suhu_values,
-                                             bc_type='natural')
-                y_smooth = cs(x_new)
-
-                # Add smooth curve with numeric x-axis
-                temp_fig.add_trace(
-                    go.Scatter(
-                        x=x_new,  # Numeric x-axis
-                        y=y_smooth,
-                        mode='lines',
-                        line=dict(color='#FF4B4B',
-                                  width=3,
-                                  shape='spline',
-                                  smoothing=1.3),
-                        fill='tozeroy',
-                        fillcolor='rgba(75, 134, 255, 0.2)',
-                        showlegend=False))
-
-                # Configure fixed x-axis ticks with actual timestamps
-                num_ticks = min(8, min_length)  # Show at most 8 ticks
-                tick_indices = np.linspace(0,
-                                           min_length - 1,
-                                           num_ticks,
-                                           dtype=int)
-                tick_labels = [timestamps[i] for i in tick_indices]
-
+                # We'll use only 3 data points for simplicity
+                num_points = 3
+                
+                # Select evenly spaced indices from the data
+                indices = np.linspace(0, min(len(data['waktu']), len(data['suhu']))-1, num_points, dtype=int)
+                
+                # Get the selected timestamps and temperature values
+                selected_timestamps = [data['waktu'][i] for i in indices]
+                selected_values = [data['suhu'][i] for i in indices]
+                
+                # Create x values (0, 1, 2) for plotting
+                x_plot = list(range(num_points))
+                
+                # Add the simplified line
+                temp_fig.add_trace(go.Scatter(
+                    x=x_plot,  # Just use 0, 1, 2 for x values
+                    y=selected_values,
+                    mode='lines',
+                    line=dict(color='#FF4B4B', width=3, shape='spline', smoothing=1.3),
+                    fill='tozeroy',
+                    fillcolor='rgba(75, 134, 255, 0.2)',
+                    showlegend=False
+                ))
+                
+                # Set up the axis with only 3 ticks
                 temp_fig.update_layout(
                     title="Temperature Trend",
                     xaxis=dict(
                         title="Time",
                         tickmode='array',
-                        tickvals=
-                        tick_indices,  # Use numeric values for tick positions
-                        ticktext=tick_labels,  # Use actual timestamps as labels
-                        tickangle=45),
+                        tickvals=x_plot,  # [0, 1, 2]
+                        ticktext=selected_timestamps,
+                        tickangle=0
+                    ),
                     yaxis=dict(title="Temperature (°C)", range=[0, 40]),
-                    margin=dict(l=40, r=20, t=40,
-                                b=60),  # Extra space at bottom for labels
+                    margin=dict(l=40, r=20, t=40, b=30),
                     height=150,
                     plot_bgcolor='rgba(250, 250, 250, 0.9)',
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
             else:
                 # Fallback for insufficient data
-                temp_fig.add_trace(
-                    go.Scatter(x=[0, 1],
-                               y=[0, 0],
-                               mode='lines',
-                               line=dict(color='#FF4B4B', width=3),
-                               showlegend=False))
+                temp_fig.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='#FF4B4B', width=3),
+                    showlegend=False
+                ))
                 temp_fig.update_layout(
                     title="Temperature Trend - Insufficient Data",
                     xaxis=dict(title="Time"),
                     yaxis=dict(title="Temperature (°C)", range=[0, 40]),
                     height=150,
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
         except Exception as e:
             print(f"Error creating temp graph: {e}")
             # Create a basic empty chart if there's an error
             temp_fig = go.Figure()
-            temp_fig.add_annotation(text=f"Error creating chart: {str(e)}",
-                                    xref="paper",
-                                    yref="paper",
-                                    x=0.5,
-                                    y=0.5,
-                                    showarrow=False)
+            temp_fig.add_annotation(
+                text=f"Error creating chart: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
 
         # Create humidity graph with properly aligned x and y values
         humid_fig = go.Figure()
@@ -433,193 +408,130 @@ def update_th_in_dashboard(n):
         try:
             # Ensure we have data to work with
             if len(data['waktu']) > 3 and len(data['kelembaban']) > 3:
-                # Make sure x and y have the same length (this is crucial)
-                min_length = min(len(data['waktu']), len(data['kelembaban']))
-                timestamps = data['waktu'][:min_length]
-                kelembaban_values = data['kelembaban'][:min_length]
-
-                # Create evenly spaced x-indices
-                x_indices = list(range(min_length))
-
-                # Create interpolation points - keeping x as simple numeric indices
-                x_new = np.linspace(0, min_length - 1, num=300)
-
-                # Create the smooth interpolation
-                cs = interpolate.CubicSpline(x_indices,
-                                             kelembaban_values,
-                                             bc_type='natural')
-                y_smooth = cs(x_new)
-
-                # Add smooth curve with numeric x-axis
-                humid_fig.add_trace(
-                    go.Scatter(
-                        x=x_new,  # Numeric x-axis
-                        y=y_smooth,
-                        mode='lines',
-                        line=dict(color='#4B86FF',
-                                  width=3,
-                                  shape='spline',
-                                  smoothing=1.3),
-                        fill='tozeroy',
-                        fillcolor='rgba(75, 134, 255, 0.2)',
-                        showlegend=False))
-
-                # Configure fixed x-axis ticks with actual timestamps
-                num_ticks = min(8, min_length)  # Show at most 8 ticks
-                tick_indices = np.linspace(0,
-                                           min_length - 1,
-                                           num_ticks,
-                                           dtype=int)
-                tick_labels = [timestamps[i] for i in tick_indices]
-
+                # We'll use only 3 data points for simplicity
+                num_points = 3
+                
+                # Select evenly spaced indices from the data
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kelembaban']))-1, num_points, dtype=int)
+                
+                # Get the selected timestamps and temperature values
+                selected_timestamps = [data['waktu'][i] for i in indices]
+                selected_values = [data['kelembaban'][i] for i in indices]
+                
+                # Create x values (0, 1, 2) for plotting
+                x_plot = list(range(num_points))
+                
+                # Add the simplified line
+                humid_fig.add_trace(go.Scatter(
+                    x=x_plot,  # Just use 0, 1, 2 for x values
+                    y=selected_values,
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3, shape='spline', smoothing=1.3),
+                    fill='tozeroy',
+                    fillcolor='rgba(75, 134, 255, 0.2)',
+                    showlegend=False
+                ))
+                
+                # Set up the axis with only 3 ticks
                 humid_fig.update_layout(
                     title="Humidity Trend",
                     xaxis=dict(
                         title="Time",
                         tickmode='array',
-                        tickvals=
-                        tick_indices,  # Use numeric values for tick positions
-                        ticktext=tick_labels,  # Use actual timestamps as labels
-                        tickangle=45),
+                        tickvals=x_plot,  # [0, 1, 2]
+                        ticktext=selected_timestamps,
+                        tickangle=0
+                    ),
                     yaxis=dict(title="Humidity (%)", range=[40, 100]),
-                    margin=dict(l=40, r=20, t=40,
-                                b=60),  # Extra space at bottom for labels
+                    margin=dict(l=40, r=20, t=40, b=30),
                     height=150,
                     plot_bgcolor='rgba(250, 250, 250, 0.9)',
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
             else:
                 # Fallback for insufficient data
-                humid_fig.add_trace(
-                    go.Scatter(x=[0, 1],
-                               y=[0, 0],
-                               mode='lines',
-                               line=dict(color='#4B86FF', width=3),
-                               showlegend=False))
+                humid_fig.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3),
+                    showlegend=False
+                ))
                 humid_fig.update_layout(
                     title="Humidity Trend - Insufficient Data",
                     xaxis=dict(title="Time"),
                     yaxis=dict(title="Humidity (%)", range=[40, 100]),
                     height=150,
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
         except Exception as e:
             print(f"Error creating humid graph: {e}")
             # Create a basic empty chart if there's an error
             humid_fig = go.Figure()
-            humid_fig.add_annotation(text=f"Error creating chart: {str(e)}",
-                                     xref="paper",
-                                     yref="paper",
-                                     x=0.5,
-                                     y=0.5,
-                                     showarrow=False)
-
-        # Create temperature graph
-        # temp_fig = go.Figure()
-        # temp_fig.add_trace(go.Scatter(
-        #     x=data['waktu'],
-        #     y=data['suhu'],
-        #     mode='lines+markers',
-        #     name='Temperature',
-        #     line=dict(color='#FF4B4B', width=2),
-        #     marker=dict(size=6)
-        # ))
-        # temp_fig.update_layout(
-        #     title="Temperature Trend",
-        #     xaxis=dict(title="Time"),
-        #     yaxis=dict(title="Temperature (°C)", range=[0, 40]),
-        #     margin=dict(l=40, r=20, t=40, b=30),
-        #     height=150,
-        #     plot_bgcolor='rgba(240, 240, 240, 0.9)'
-        # )
-
-        # Create humidity graph
-        # humid_fig = go.Figure()
-        # humid_fig.add_trace(go.Scatter(
-        #     x=data['waktu'],
-        #     y=data['kelembaban'],
-        #     mode='lines+markers',
-        #     name='Humidity',
-        #     line=dict(color='blue', width=2),
-        #     marker=dict(size=6)
-        # ))
-        # humid_fig.update_layout(
-        #     title="Humidity Trend",
-        #     xaxis=dict(title="Time"),
-        #     yaxis=dict(title="Humidity (%)", range=[40, 100]),
-        #     margin=dict(l=40, r=20, t=40, b=30),
-        #     height=150,
-        #     plot_bgcolor='rgba(240, 240, 240, 0.9)'
-        # )
-
+            humid_fig.add_annotation(
+                text=f"Error creating chart: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
+        
         return suhu_value, kelembaban_value, temp_fig, humid_fig
-
+    
     except Exception as e:
         print(f"Error in update_th_in_dashboard: {e}")
         # Return default values if there's an error
-        default_fig = go.Figure(layout=dict(title="Data Unavailable",
-                                            annotations=[
-                                                dict(text="Error loading data",
-                                                     xref="paper",
-                                                     yref="paper",
-                                                     x=0.5,
-                                                     y=0.5,
-                                                     showarrow=False)
-                                            ]))
+        default_fig = go.Figure(layout=dict(
+            title="Data Unavailable",
+            annotations=[dict(
+                text="Error loading data",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False
+            )]
+        ))
         return "N/A", "N/A", default_fig, default_fig
-
-
+    
 # Separate callback for th_out layout - Completely revised version
-@app_dash.callback([
-    Output({
-        'type': 'sensor-value',
-        'id': 'suhu-display-outdoor'
-    },
-           'children',
-           allow_duplicate=True),
-    Output({
-        'type': 'sensor-value',
-        'id': 'kelembaban-display-outdoor'
-    },
-           'children',
-           allow_duplicate=True),
-    Output('temp-graph-out', 'figure'),
-    Output('humidity-graph-out', 'figure')
-], [Input('interval_thout', 'n_intervals')],
-                   prevent_initial_call=True)
-def update_th_in_dashboard(n):
-    try:
-
-        # print(f"DEBUG: Data lengths - waktu: {len(data['waktu'] if 'waktu' in data else [])}, "
-        # f"suhu: {len(data['suhu_out'] if 'suhu_out' in data else [])}, "
-        # f"kelembaban: {len(data['kelembaban_out'] if 'kelembaban_out' in data else [])}")
-
+@app_dash.callback(
+    [Output({'type': 'sensor-value', 'id': 'suhu-display-outdoor'}, 'children', allow_duplicate=True),
+     Output({'type': 'sensor-value', 'id': 'kelembaban-display-outdoor'}, 'children', allow_duplicate=True),
+     Output('temp-graph-out', 'figure'),
+     Output('humidity-graph-out', 'figure')],
+    [Input('interval_thout', 'n_intervals')],
+    prevent_initial_call=True
+)
+def update_th_out_dashboard(n):
+    try:        
         # Default values
         suhu_value = "N/A"
         kelembaban_value = "N/A"
-
+        
         # Empty figures with proper layout
-        empty_temp_fig = go.Figure(
-            layout=dict(title="Temperature Trend",
-                        xaxis=dict(title="Time"),
-                        yaxis=dict(title="Temperature (°C)", range=[0, 40]),
-                        margin=dict(l=40, r=20, t=40, b=30),
-                        height=150,
-                        plot_bgcolor='rgba(240, 240, 240, 0.9)'))
-
-        empty_humid_fig = go.Figure(
-            layout=dict(title="Humidity Trend",
-                        xaxis=dict(title="Time"),
-                        yaxis=dict(title="Humidity (%)", range=[40, 100]),
-                        margin=dict(l=40, r=20, t=40, b=30),
-                        height=150,
-                        plot_bgcolor='rgba(240, 240, 240, 0.9)'))
-
+        empty_temp_fig = go.Figure(layout=dict(
+            title="Temperature Trend",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Temperature (°C)", range=[0, 40]),
+            margin=dict(l=40, r=20, t=40, b=30),
+            height=150,
+            plot_bgcolor='rgba(240, 240, 240, 0.9)'
+        ))
+        
+        empty_humid_fig = go.Figure(layout=dict(
+            title="Humidity Trend",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Humidity (%)", range=[40, 100]),
+            margin=dict(l=40, r=20, t=40, b=30),
+            height=150,
+            plot_bgcolor='rgba(240, 240, 240, 0.9)'
+        ))
+        
         # Check if we have data
-        if not data['suhu_out'] or not data['kelembaban_out'] or not data[
-                'waktu']:
+        if not data['suhu_out'] or not data['kelembaban_out'] or not data['waktu']:
             return suhu_value, kelembaban_value, empty_temp_fig, empty_humid_fig
-
+        
         # Get the latest values
         suhu = data['suhu_out'][-1] if data['suhu_out'] else 0
         kelembaban = data['kelembaban_out'][-1] if data['kelembaban_out'] else 0
@@ -632,86 +544,73 @@ def update_th_in_dashboard(n):
         try:
             # Ensure we have data to work with
             if len(data['waktu']) > 3 and len(data['suhu_out']) > 3:
-                # Make sure x and y have the same length (this is crucial)
-                min_length = min(len(data['waktu']), len(data['suhu_out']))
-                timestamps = data['waktu'][:min_length]
-                suhu_values = data['suhu_out'][:min_length]
-
-                # Create evenly spaced x-indices
-                x_indices = list(range(min_length))
-
-                # Create interpolation points - keeping x as simple numeric indices
-                x_new = np.linspace(0, min_length - 1, num=300)
-
-                # Create the smooth interpolation
-                cs = interpolate.CubicSpline(x_indices,
-                                             suhu_values,
-                                             bc_type='natural')
-                y_smooth = cs(x_new)
-
-                # Add smooth curve with numeric x-axis
-                temp_fig.add_trace(
-                    go.Scatter(
-                        x=x_new,  # Numeric x-axis
-                        y=y_smooth,
-                        mode='lines',
-                        line=dict(color='#FF4B4B',
-                                  width=3,
-                                  shape='spline',
-                                  smoothing=1.3),
-                        fill='tozeroy',
-                        fillcolor='rgba(75, 134, 255, 0.2)',
-                        showlegend=False))
-
-                # Configure fixed x-axis ticks with actual timestamps
-                num_ticks = min(8, min_length)  # Show at most 8 ticks
-                tick_indices = np.linspace(0,
-                                           min_length - 1,
-                                           num_ticks,
-                                           dtype=int)
-                tick_labels = [timestamps[i] for i in tick_indices]
-
+                # We'll use only 3 data points for simplicity
+                num_points = 3
+                
+                # Select evenly spaced indices from the data
+                indices = np.linspace(0, min(len(data['waktu']), len(data['suhu_out']))-1, num_points, dtype=int)
+                
+                # Get the selected timestamps and temperature values
+                selected_timestamps = [data['waktu'][i] for i in indices]
+                selected_values = [data['suhu_out'][i] for i in indices]
+                
+                # Create x values (0, 1, 2) for plotting
+                x_plot = list(range(num_points))
+                
+                # Add the simplified line
+                temp_fig.add_trace(go.Scatter(
+                    x=x_plot,  # Just use 0, 1, 2 for x values
+                    y=selected_values,
+                    mode='lines',
+                    line=dict(color='#FF4B4B', width=3, shape='spline', smoothing=1.3),
+                    fill='tozeroy',
+                    fillcolor='rgba(75, 134, 255, 0.2)',
+                    showlegend=False
+                ))
+                
+                # Set up the axis with only 3 ticks
                 temp_fig.update_layout(
                     title="Temperature Trend",
                     xaxis=dict(
                         title="Time",
                         tickmode='array',
-                        tickvals=
-                        tick_indices,  # Use numeric values for tick positions
-                        ticktext=tick_labels,  # Use actual timestamps as labels
-                        tickangle=45),
+                        tickvals=x_plot,  # [0, 1, 2]
+                        ticktext=selected_timestamps,
+                        tickangle=0
+                    ),
                     yaxis=dict(title="Temperature (°C)", range=[0, 40]),
-                    margin=dict(l=40, r=20, t=40,
-                                b=60),  # Extra space at bottom for labels
+                    margin=dict(l=40, r=20, t=40, b=30),
                     height=150,
                     plot_bgcolor='rgba(250, 250, 250, 0.9)',
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
             else:
                 # Fallback for insufficient data
-                temp_fig.add_trace(
-                    go.Scatter(x=[0, 1],
-                               y=[0, 0],
-                               mode='lines',
-                               line=dict(color='#FF4B4B', width=3),
-                               showlegend=False))
+                temp_fig.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='#FF4B4B', width=3),
+                    showlegend=False
+                ))
                 temp_fig.update_layout(
                     title="Temperature Trend - Insufficient Data",
                     xaxis=dict(title="Time"),
                     yaxis=dict(title="Temperature (°C)", range=[0, 40]),
                     height=150,
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
         except Exception as e:
             print(f"Error creating temp graph: {e}")
             # Create a basic empty chart if there's an error
             temp_fig = go.Figure()
-            temp_fig.add_annotation(text=f"Error creating chart: {str(e)}",
-                                    xref="paper",
-                                    yref="paper",
-                                    x=0.5,
-                                    y=0.5,
-                                    showarrow=False)
+            temp_fig.add_annotation(
+                text=f"Error creating chart: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
 
         # Create humidity graph with properly aligned x and y values
         humid_fig = go.Figure()
@@ -719,500 +618,363 @@ def update_th_in_dashboard(n):
         try:
             # Ensure we have data to work with
             if len(data['waktu']) > 3 and len(data['kelembaban_out']) > 3:
-                # Make sure x and y have the same length (this is crucial)
-                min_length = min(len(data['waktu']),
-                                 len(data['kelembaban_out']))
-                timestamps = data['waktu'][:min_length]
-                kelembaban_values = data['kelembaban_out'][:min_length]
-
-                # Create evenly spaced x-indices
-                x_indices = list(range(min_length))
-
-                # Create interpolation points - keeping x as simple numeric indices
-                x_new = np.linspace(0, min_length - 1, num=300)
-
-                # Create the smooth interpolation
-                cs = interpolate.CubicSpline(x_indices,
-                                             kelembaban_values,
-                                             bc_type='natural')
-                y_smooth = cs(x_new)
-
-                # Add smooth curve with numeric x-axis
-                humid_fig.add_trace(
-                    go.Scatter(
-                        x=x_new,  # Numeric x-axis
-                        y=y_smooth,
-                        mode='lines',
-                        line=dict(color='#4B86FF',
-                                  width=3,
-                                  shape='spline',
-                                  smoothing=1.3),
-                        fill='tozeroy',
-                        fillcolor='rgba(75, 134, 255, 0.2)',
-                        showlegend=False))
-
-                # Configure fixed x-axis ticks with actual timestamps
-                num_ticks = min(8, min_length)  # Show at most 8 ticks
-                tick_indices = np.linspace(0,
-                                           min_length - 1,
-                                           num_ticks,
-                                           dtype=int)
-                tick_labels = [timestamps[i] for i in tick_indices]
-
+                # We'll use only 3 data points for simplicity
+                num_points = 3
+                
+                # Select evenly spaced indices from the data
+                indices = np.linspace(0, min(len(data['waktu']), len(data['kelembaban_out']))-1, num_points, dtype=int)
+                
+                # Get the selected timestamps and temperature values
+                selected_timestamps = [data['waktu'][i] for i in indices]
+                selected_values = [data['kelembaban_out'][i] for i in indices]
+                
+                # Create x values (0, 1, 2) for plotting
+                x_plot = list(range(num_points))
+                
+                # Add the simplified line
+                humid_fig.add_trace(go.Scatter(
+                    x=x_plot,  # Just use 0, 1, 2 for x values
+                    y=selected_values,
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3, shape='spline', smoothing=1.3),
+                    fill='tozeroy',
+                    fillcolor='rgba(75, 134, 255, 0.2)',
+                    showlegend=False
+                ))
+                
+                # Set up the axis with only 3 ticks
                 humid_fig.update_layout(
                     title="Humidity Trend",
                     xaxis=dict(
                         title="Time",
                         tickmode='array',
-                        tickvals=
-                        tick_indices,  # Use numeric values for tick positions
-                        ticktext=tick_labels,  # Use actual timestamps as labels
-                        tickangle=45),
+                        tickvals=x_plot,  # [0, 1, 2]
+                        ticktext=selected_timestamps,
+                        tickangle=0
+                    ),
                     yaxis=dict(title="Humidity (%)", range=[40, 100]),
-                    margin=dict(l=40, r=20, t=40,
-                                b=60),  # Extra space at bottom for labels
+                    margin=dict(l=40, r=20, t=40, b=30),
                     height=150,
                     plot_bgcolor='rgba(250, 250, 250, 0.9)',
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
             else:
                 # Fallback for insufficient data
-                humid_fig.add_trace(
-                    go.Scatter(x=[0, 1],
-                               y=[0, 0],
-                               mode='lines',
-                               line=dict(color='#4B86FF', width=3),
-                               showlegend=False))
+                humid_fig.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3),
+                    showlegend=False
+                ))
                 humid_fig.update_layout(
                     title="Humidity Trend - Insufficient Data",
                     xaxis=dict(title="Time"),
                     yaxis=dict(title="Humidity (%)", range=[40, 100]),
                     height=150,
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
         except Exception as e:
             print(f"Error creating humid graph: {e}")
             # Create a basic empty chart if there's an error
             humid_fig = go.Figure()
-            humid_fig.add_annotation(text=f"Error creating chart: {str(e)}",
-                                     xref="paper",
-                                     yref="paper",
-                                     x=0.5,
-                                     y=0.5,
-                                     showarrow=False)
-
-        # Create temperature graph
-        # temp_fig = go.Figure()
-        # temp_fig.add_trace(go.Scatter(
-        #     x=data['waktu'],
-        #     y=data['suhu_out'],
-        #     mode='lines+markers',
-        #     name='Temperature',
-        #     line=dict(color='#FF4B4B', width=2),
-        #     marker=dict(size=6)
-        # ))
-        # temp_fig.update_layout(
-        #     title="Temperature Trend",
-        #     xaxis=dict(title="Time"),
-        #     yaxis=dict(title="Temperature (°C)"),
-        #     margin=dict(l=40, r=20, t=40, b=30),
-        #     height=150,
-        #     plot_bgcolor='rgba(240, 240, 240, 0.9)'
-        # )
-
-        # Create humidity graph
-        # humid_fig = go.Figure()
-        # humid_fig.add_trace(go.Scatter(
-        #     x=data['waktu'],
-        #     y=data['kelembaban_out'],
-        #     mode='lines+markers',
-        #     name='Humidity',
-        #     line=dict(color='blue', width=2),
-        #     marker=dict(size=6)
-        # ))
-        # humid_fig.update_layout(
-        #     title="Humidity Trend",
-        #     xaxis=dict(title="Time"),
-        #     yaxis=dict(title="Humidity (%)"),
-        #     margin=dict(l=40, r=20, t=40, b=30),
-        #     height=150,
-        #     plot_bgcolor='rgba(240, 240, 240, 0.9)'
-        # )
-
+            humid_fig.add_annotation(
+                text=f"Error creating chart: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
         return suhu_value, kelembaban_value, temp_fig, humid_fig
-
+    
     except Exception as e:
         print(f"Error in update_th_in_dashboard: {e}")
         # Return default values if there's an error
-        default_fig = go.Figure(layout=dict(title="Data Unavailable",
-                                            annotations=[
-                                                dict(text="Error loading data",
-                                                     xref="paper",
-                                                     yref="paper",
-                                                     x=0.5,
-                                                     y=0.5,
-                                                     showarrow=False)
-                                            ]))
+        default_fig = go.Figure(layout=dict(
+            title="Data Unavailable",
+            annotations=[dict(
+                text="Error loading data",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False
+            )]
+        ))
         return "N/A", "N/A", default_fig, default_fig
-
-
+    
 # Separate callback for windspeed layout - Completely revised version
-@app_dash.callback([
-    Output({
-        'type': 'sensor-value',
-        'id': 'windspeed-display'
-    },
-           'children',
-           allow_duplicate=True),
-    Output('windspeed-graph', 'figure')
-], [Input('interval_windspeed', 'n_intervals')],
-                   prevent_initial_call=True)
-def update_th_in_dashboard(n):
-    try:
-
-        # print(f"DEBUG: Data lengths - waktu: {len(data['waktu'] if 'waktu' in data else [])}, "
-        # f"suhu: {len(data['suhu'] if 'suhu' in data else [])}, "
-        # f"kelembaban: {len(data['kelembaban'] if 'kelembaban' in data else [])}")
-
+@app_dash.callback(
+    [Output({'type': 'sensor-value', 'id': 'windspeed-display'}, 'children', allow_duplicate=True),
+     Output('windspeed-graph', 'figure')],
+    [Input('interval_windspeed', 'n_intervals')],
+    prevent_initial_call=True
+)
+def update_windspeed_dashboard(n):
+    try:        
         # Default values
         windspeed_value = "N/A"
-
+        
         # Empty figures with proper layout
-        empty_windspeed_fig = go.Figure(
-            layout=dict(title="Windspeed Trend",
-                        xaxis=dict(title="Time"),
-                        yaxis=dict(title="Windspeed (m/s)", range=[0, 70]),
-                        margin=dict(l=40, r=20, t=40, b=30),
-                        height=300,
-                        plot_bgcolor='rgba(240, 240, 240, 0.9)'))
-
+        empty_windspeed_fig = go.Figure(layout=dict(
+            title="Windspeed Trend",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Windspeed (m/s)", range=[0, 70]),
+            margin=dict(l=40, r=20, t=40, b=30),
+            height=300,
+            plot_bgcolor='rgba(240, 240, 240, 0.9)'
+        ))
+        
         # Check if we have data
         if not data['windspeed'] or not data['waktu']:
             return windspeed_value, empty_windspeed_fig
-
+        
         # Get the latest values
         windspeed = data['windspeed'][-1] if data['windspeed'] else 0
         windspeed_value = f"{windspeed}m/s"
-
+        
         # Create windspeed graph with properly aligned x and y values
         windspeed_fig = go.Figure()
 
         try:
             # Ensure we have data to work with
             if len(data['waktu']) > 3 and len(data['windspeed']) > 3:
-                # Make sure x and y have the same length (this is crucial)
-                min_length = min(len(data['waktu']), len(data['windspeed']))
-                timestamps = data['waktu'][:min_length]
-                windspeed_values = data['windspeed'][:min_length]
-
-                # Create evenly spaced x-indices
-                x_indices = list(range(min_length))
-
-                # Create interpolation points - keeping x as simple numeric indices
-                x_new = np.linspace(0, min_length - 1, num=300)
-
-                # Create the smooth interpolation
-                cs = interpolate.CubicSpline(x_indices,
-                                             windspeed_values,
-                                             bc_type='natural')
-                y_smooth = cs(x_new)
-
-                # Add smooth curve with numeric x-axis
-                windspeed_fig.add_trace(
-                    go.Scatter(
-                        x=x_new,  # Numeric x-axis
-                        y=y_smooth,
-                        mode='lines',
-                        line=dict(color='#4B86FF',
-                                  width=3,
-                                  shape='spline',
-                                  smoothing=1.3),
-                        fill='tozeroy',
-                        fillcolor='rgba(75, 134, 255, 0.2)',
-                        showlegend=False))
-
-                # Configure fixed x-axis ticks with actual timestamps
-                num_ticks = min(8, min_length)  # Show at most 8 ticks
-                tick_indices = np.linspace(0,
-                                           min_length - 1,
-                                           num_ticks,
-                                           dtype=int)
-                tick_labels = [timestamps[i] for i in tick_indices]
-
+                # We'll use only 3 data points for simplicity
+                num_points = 3
+                
+                # Select evenly spaced indices from the data
+                indices = np.linspace(0, min(len(data['waktu']), len(data['windspeed']))-1, num_points, dtype=int)
+                
+                # Get the selected timestamps and temperature values
+                selected_timestamps = [data['waktu'][i] for i in indices]
+                selected_values = [data['windspeed'][i] for i in indices]
+                
+                # Create x values (0, 1, 2) for plotting
+                x_plot = list(range(num_points))
+                
+                # Add the simplified line
+                windspeed_fig.add_trace(go.Scatter(
+                    x=x_plot,  # Just use 0, 1, 2 for x values
+                    y=selected_values,
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3, shape='spline', smoothing=1.3),
+                    fill='tozeroy',
+                    fillcolor='rgba(75, 134, 255, 0.2)',
+                    showlegend=False
+                ))
+                
+                # Set up the axis with only 3 ticks
                 windspeed_fig.update_layout(
                     title="Windspeed Trend",
                     xaxis=dict(
                         title="Time",
                         tickmode='array',
-                        tickvals=
-                        tick_indices,  # Use numeric values for tick positions
-                        ticktext=tick_labels,  # Use actual timestamps as labels
-                        tickangle=45),
+                        tickvals=x_plot,  # [0, 1, 2]
+                        ticktext=selected_timestamps,
+                        tickangle=0
+                    ),
                     yaxis=dict(title="Windspeed (m/s)", range=[0, 70]),
-                    margin=dict(l=40, r=20, t=40,
-                                b=60),  # Extra space at bottom for labels
+                    margin=dict(l=40, r=20, t=40, b=30),
                     height=300,
                     plot_bgcolor='rgba(250, 250, 250, 0.9)',
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
             else:
                 # Fallback for insufficient data
-                windspeed_fig.add_trace(
-                    go.Scatter(x=[0, 1],
-                               y=[0, 0],
-                               mode='lines',
-                               line=dict(color='#4B86FF', width=3),
-                               showlegend=False))
+                windspeed_fig.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3),
+                    showlegend=False
+                ))
                 windspeed_fig.update_layout(
                     title="Windspeed Trend - Insufficient Data",
                     xaxis=dict(title="Time"),
                     yaxis=dict(title="Windspeed (m/s)", range=[0, 70]),
                     height=300,
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
         except Exception as e:
             print(f"Error creating windspeed graph: {e}")
             # Create a basic empty chart if there's an error
             windspeed_fig = go.Figure()
             windspeed_fig.add_annotation(
                 text=f"Error creating chart: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
+        return windspeed_value, windspeed_fig
+    
+    except Exception as e:
+        print(f"Error in update_th_in_dashboard: {e}")
+        # Return default values if there's an error
+        default_fig = go.Figure(layout=dict(
+            title="Data Unavailable",
+            annotations=[dict(
+                text="Error loading data",
                 xref="paper",
                 yref="paper",
                 x=0.5,
                 y=0.5,
-                showarrow=False)
-
-        # Create Windspeed graph
-        # windspeed_fig = go.Figure()
-        # windspeed_fig.add_trace(go.Scatter(
-        #     x=data['waktu'],
-        #     y=data['windspeed'],
-        #     mode='lines+markers',
-        #     name='Windspeed',
-        #     line=dict(color='#FF4B4B', width=2),
-        #     marker=dict(size=6)
-        # ))
-        # windspeed_fig.update_layout(
-        #     title="Windspeed Trend",
-        #     xaxis=dict(title="Time"),
-        #     yaxis=dict(title="Windspeed (m/s)", range=[0, 70]),
-        #     margin=dict(l=40, r=20, t=40, b=30),
-        #     height=300,
-        #     plot_bgcolor='rgba(240, 240, 240, 0.9)'
-        # )
-        return windspeed_value, windspeed_fig
-
-    except Exception as e:
-        print(f"Error in update_th_in_dashboard: {e}")
-        # Return default values if there's an error
-        default_fig = go.Figure(layout=dict(title="Data Unavailable",
-                                            annotations=[
-                                                dict(text="Error loading data",
-                                                     xref="paper",
-                                                     yref="paper",
-                                                     x=0.5,
-                                                     y=0.5,
-                                                     showarrow=False)
-                                            ]))
+                showarrow=False
+            )]
+        ))
         return "N/A", default_fig
-
-
+    
 # Separate callback for rainfall layout - Completely revised version
-@app_dash.callback([
-    Output({
-        'type': 'sensor-value',
-        'id': 'rainfall-display'
-    },
-           'children',
-           allow_duplicate=True),
-    Output('rainfall-graph', 'figure')
-], [Input('interval_rainfall', 'n_intervals')],
-                   prevent_initial_call=True)
-def update_th_in_dashboard(n):
+@app_dash.callback(
+    [Output({'type': 'sensor-value', 'id': 'rainfall-display'}, 'children', allow_duplicate=True),
+     Output('rainfall-graph', 'figure')],
+    [Input('interval_rainfall', 'n_intervals')],
+    prevent_initial_call=True
+)
+def update_rainfall_dashboard(n):
     try:
-
-        # print(f"DEBUG: Data lengths - waktu: {len(data['waktu'] if 'waktu' in data else [])}, "
-        # f"suhu: {len(data['suhu'] if 'suhu' in data else [])}, "
-        # f"kelembaban: {len(data['kelembaban'] if 'kelembaban' in data else [])}")
-
         # Default values
         rainfall_value = "N/A"
-
+        
         # Empty figures with proper layout
-        empty_rainfall_fig = go.Figure(
-            layout=dict(title="Rainfall Trend",
-                        xaxis=dict(title="Time"),
-                        yaxis=dict(title="Rainfall (mm)", range=[0, 100]),
-                        margin=dict(l=40, r=20, t=40, b=30),
-                        height=300,
-                        plot_bgcolor='rgba(240, 240, 240, 0.9)'))
-
+        empty_rainfall_fig = go.Figure(layout=dict(
+            title="Rainfall Trend",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Rainfall (mm)", range=[0, 100]),
+            margin=dict(l=40, r=20, t=40, b=30),
+            height=300,
+            plot_bgcolor='rgba(240, 240, 240, 0.9)'
+        ))
+        
         # Check if we have data
         if not data['rainfall'] or not data['waktu']:
             return rainfall_value, empty_rainfall_fig
-
+        
         # Get the latest values
         rainfall = data['rainfall'][-1] if data['rainfall'] else 0
         rainfall_value = f"{rainfall}mm"
-
+        
         # Create rainfall graph with properly aligned x and y values
         rainfall_fig = go.Figure()
 
         try:
             # Ensure we have data to work with
             if len(data['waktu']) > 3 and len(data['rainfall']) > 3:
-                # Make sure x and y have the same length (this is crucial)
-                min_length = min(len(data['waktu']), len(data['rainfall']))
-                timestamps = data['waktu'][:min_length]
-                rainfall_values = data['rainfall'][:min_length]
-
-                # Create evenly spaced x-indices
-                x_indices = list(range(min_length))
-
-                # Create interpolation points - keeping x as simple numeric indices
-                x_new = np.linspace(0, min_length - 1, num=300)
-
-                # Create the smooth interpolation
-                cs = interpolate.CubicSpline(x_indices,
-                                             rainfall_values,
-                                             bc_type='natural')
-                y_smooth = cs(x_new)
-
-                # Add smooth curve with numeric x-axis
-                rainfall_fig.add_trace(
-                    go.Scatter(
-                        x=x_new,  # Numeric x-axis
-                        y=y_smooth,
-                        mode='lines',
-                        line=dict(color='#4B86FF',
-                                  width=3,
-                                  shape='spline',
-                                  smoothing=1.3),
-                        fill='tozeroy',
-                        fillcolor='rgba(75, 134, 255, 0.2)',
-                        showlegend=False))
-
-                # Configure fixed x-axis ticks with actual timestamps
-                num_ticks = min(8, min_length)  # Show at most 8 ticks
-                tick_indices = np.linspace(0,
-                                           min_length - 1,
-                                           num_ticks,
-                                           dtype=int)
-                tick_labels = [timestamps[i] for i in tick_indices]
-
+                # We'll use only 3 data points for simplicity
+                num_points = 3
+                
+                # Select evenly spaced indices from the data
+                indices = np.linspace(0, min(len(data['waktu']), len(data['rainfall']))-1, num_points, dtype=int)
+                
+                # Get the selected timestamps and temperature values
+                selected_timestamps = [data['waktu'][i] for i in indices]
+                selected_values = [data['rainfall'][i] for i in indices]
+                
+                # Create x values (0, 1, 2) for plotting
+                x_plot = list(range(num_points))
+                
+                # Add the simplified line
+                rainfall_fig.add_trace(go.Scatter(
+                    x=x_plot,  # Just use 0, 1, 2 for x values
+                    y=selected_values,
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3, shape='spline', smoothing=1.3),
+                    fill='tozeroy',
+                    fillcolor='rgba(75, 134, 255, 0.2)',
+                    showlegend=False
+                ))
+                
+                # Set up the axis with only 3 ticks
                 rainfall_fig.update_layout(
                     title="Rainfall Trend",
                     xaxis=dict(
                         title="Time",
                         tickmode='array',
-                        tickvals=
-                        tick_indices,  # Use numeric values for tick positions
-                        ticktext=tick_labels,  # Use actual timestamps as labels
-                        tickangle=45),
+                        tickvals=x_plot,  # [0, 1, 2]
+                        ticktext=selected_timestamps,
+                        tickangle=0
+                    ),
                     yaxis=dict(title="Rainfall (mm)", range=[0, 100]),
-                    margin=dict(l=40, r=20, t=40,
-                                b=60),  # Extra space at bottom for labels
+                    margin=dict(l=40, r=20, t=40, b=30),
                     height=300,
                     plot_bgcolor='rgba(250, 250, 250, 0.9)',
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
             else:
                 # Fallback for insufficient data
-                rainfall_fig.add_trace(
-                    go.Scatter(x=[0, 1],
-                               y=[0, 0],
-                               mode='lines',
-                               line=dict(color='#4B86FF', width=3),
-                               showlegend=False))
+                rainfall_fig.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3),
+                    showlegend=False
+                ))
                 rainfall_fig.update_layout(
                     title="Rainfall Trend - Insufficient Data",
                     xaxis=dict(title="Time"),
                     yaxis=dict(title="Rainfall (mm)", range=[0, 100]),
                     height=300,
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
         except Exception as e:
             print(f"Error creating rainfall graph: {e}")
             # Create a basic empty chart if there's an error
             rainfall_fig = go.Figure()
-            rainfall_fig.add_annotation(text=f"Error creating chart: {str(e)}",
-                                        xref="paper",
-                                        yref="paper",
-                                        x=0.5,
-                                        y=0.5,
-                                        showarrow=False)
-        # Create rainfall graph
-        # rainfall_fig = go.Figure()
-        # rainfall_fig.add_trace(go.Scatter(
-        #     x=data['waktu'],
-        #     y=data['rainfall'],
-        #     mode='lines+markers',
-        #     name='Rainfall',
-        #     line=dict(color='#FF4B4B', width=2),
-        #     marker=dict(size=6)
-        # ))
-        # rainfall_fig.update_layout(
-        #     title="Rainfall Trend",
-        #     xaxis=dict(title="Time"),
-        #     yaxis=dict(title="Rainfall (mm)", range=[0, 100]),
-        #     margin=dict(l=40, r=20, t=40, b=30),
-        #     height=300,
-        #     plot_bgcolor='rgba(240, 240, 240, 0.9)'
-        # )
+            rainfall_fig.add_annotation(
+                text=f"Error creating chart: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
         return rainfall_value, rainfall_fig
-
+    
     except Exception as e:
         print(f"Error in update_th_in_dashboard: {e}")
         # Return default values if there's an error
-        default_fig = go.Figure(layout=dict(title="Data Unavailable",
-                                            annotations=[
-                                                dict(text="Error loading data",
-                                                     xref="paper",
-                                                     yref="paper",
-                                                     x=0.5,
-                                                     y=0.5,
-                                                     showarrow=False)
-                                            ]))
+        default_fig = go.Figure(layout=dict(
+            title="Data Unavailable",
+            annotations=[dict(
+                text="Error loading data",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False
+            )]
+        ))
         return "N/A", default_fig
-
-
+    
 # Separate callback for co2 layout - Completely revised version
-@app_dash.callback([
-    Output({
-        'type': 'sensor-value',
-        'id': 'co2-display'
-    },
-           'children',
-           allow_duplicate=True),
-    Output('co2-graph', 'figure')
-], [Input('interval_co2', 'n_intervals')],
-                   prevent_initial_call=True)
-def update_th_in_dashboard(n):
+@app_dash.callback(
+    [Output({'type': 'sensor-value', 'id': 'co2-display'}, 'children', allow_duplicate=True),
+     Output('co2-graph', 'figure')],
+    [Input('interval_co2', 'n_intervals')],
+    prevent_initial_call=True
+)
+def update_co2_dashboard(n):
     try:
-
-        # print(f"DEBUG: Data lengths - waktu: {len(data['waktu'] if 'waktu' in data else [])}, "
-        # f"suhu: {len(data['suhu'] if 'suhu' in data else [])}, "
-        # f"kelembaban: {len(data['kelembaban'] if 'kelembaban' in data else [])}")
-
         # Default values
         co2_value = "N/A"
-
+        
         # Empty figures with proper layout
-        co2_fig = go.Figure(
-            layout=dict(title="CO2 Trend",
-                        xaxis=dict(title="Time"),
-                        yaxis=dict(title="CO2 (PPM)", range=[400, 1000]),
-                        margin=dict(l=40, r=20, t=40, b=30),
-                        height=300,
-                        plot_bgcolor='rgba(240, 240, 240, 0.9)'))
-
+        co2_fig = go.Figure(layout=dict(
+            title="CO2 Trend",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="CO2 (PPM)", range=[400, 1000]),
+            margin=dict(l=40, r=20, t=40, b=30),
+            height=300,
+            plot_bgcolor='rgba(240, 240, 240, 0.9)'
+        ))
+        
         # Check if we have data
         if not data['co2'] or not data['waktu']:
             return co2_value, co2_fig
-
+        
         # Get the latest values
         co2 = data['co2'][-1] if data['co2'] else 0
         co2_value = f"{co2}PPM"
+        
 
         # Create co2 graph with properly aligned x and y values
         co2_fig = go.Figure()
@@ -1220,315 +982,236 @@ def update_th_in_dashboard(n):
         try:
             # Ensure we have data to work with
             if len(data['waktu']) > 3 and len(data['co2']) > 3:
-                # Make sure x and y have the same length (this is crucial)
-                min_length = min(len(data['waktu']), len(data['co2']))
-                timestamps = data['waktu'][:min_length]
-                co2_values = data['co2'][:min_length]
-
-                # Create evenly spaced x-indices
-                x_indices = list(range(min_length))
-
-                # Create interpolation points - keeping x as simple numeric indices
-                x_new = np.linspace(0, min_length - 1, num=300)
-
-                # Create the smooth interpolation
-                cs = interpolate.CubicSpline(x_indices,
-                                             co2_values,
-                                             bc_type='natural')
-                y_smooth = cs(x_new)
-
-                # Add smooth curve with numeric x-axis
-                co2_fig.add_trace(
-                    go.Scatter(
-                        x=x_new,  # Numeric x-axis
-                        y=y_smooth,
-                        mode='lines',
-                        line=dict(color='#4B86FF',
-                                  width=3,
-                                  shape='spline',
-                                  smoothing=1.3),
-                        fill='tozeroy',
-                        fillcolor='rgba(75, 134, 255, 0.2)',
-                        showlegend=False))
-
-                # Configure fixed x-axis ticks with actual timestamps
-                num_ticks = min(8, min_length)  # Show at most 8 ticks
-                tick_indices = np.linspace(0,
-                                           min_length - 1,
-                                           num_ticks,
-                                           dtype=int)
-                tick_labels = [timestamps[i] for i in tick_indices]
-
+                # We'll use only 3 data points for simplicity
+                num_points = 3
+                
+                # Select evenly spaced indices from the data
+                indices = np.linspace(0, min(len(data['waktu']), len(data['co2']))-1, num_points, dtype=int)
+                
+                # Get the selected timestamps and temperature values
+                selected_timestamps = [data['waktu'][i] for i in indices]
+                selected_values = [data['co2'][i] for i in indices]
+                
+                # Create x values (0, 1, 2) for plotting
+                x_plot = list(range(num_points))
+                
+                # Add the simplified line
+                co2_fig.add_trace(go.Scatter(
+                    x=x_plot,  # Just use 0, 1, 2 for x values
+                    y=selected_values,
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3, shape='spline', smoothing=1.3),
+                    fill='tozeroy',
+                    fillcolor='rgba(75, 134, 255, 0.2)',
+                    showlegend=False
+                ))
+                
+                # Set up the axis with only 3 ticks
                 co2_fig.update_layout(
                     title="CO2 Trend",
                     xaxis=dict(
                         title="Time",
                         tickmode='array',
-                        tickvals=
-                        tick_indices,  # Use numeric values for tick positions
-                        ticktext=tick_labels,  # Use actual timestamps as labels
-                        tickangle=45),
+                        tickvals=x_plot,  # [0, 1, 2]
+                        ticktext=selected_timestamps,
+                        tickangle=0
+                    ),
                     yaxis=dict(title="CO2 (PPM)", range=[0, 1000]),
-                    margin=dict(l=40, r=20, t=40,
-                                b=60),  # Extra space at bottom for labels
+                    margin=dict(l=40, r=20, t=40, b=30),
                     height=300,
                     plot_bgcolor='rgba(250, 250, 250, 0.9)',
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
             else:
                 # Fallback for insufficient data
-                co2_fig.add_trace(
-                    go.Scatter(x=[0, 1],
-                               y=[0, 0],
-                               mode='lines',
-                               line=dict(color='#4B86FF', width=3),
-                               showlegend=False))
-                co2_fig.update_layout(title="CO2 Trend - Insufficient Data",
-                                      xaxis=dict(title="Time"),
-                                      yaxis=dict(title="CO2 (PPM)",
-                                                 range=[0, 1000]),
-                                      height=300,
-                                      showlegend=False)
-
+                co2_fig.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3),
+                    showlegend=False
+                ))
+                co2_fig.update_layout(
+                    title="CO2 Trend - Insufficient Data",
+                    xaxis=dict(title="Time"),
+                    yaxis=dict(title="CO2 (PPM)", range=[0, 1000]),
+                    height=300,
+                    showlegend=False
+                )
+                
         except Exception as e:
             print(f"Error creating co2 graph: {e}")
             # Create a basic empty chart if there's an error
             co2_fig = go.Figure()
-            co2_fig.add_annotation(text=f"Error creating chart: {str(e)}",
-                                   xref="paper",
-                                   yref="paper",
-                                   x=0.5,
-                                   y=0.5,
-                                   showarrow=False)
-        # Create rainfall graph
-        # co2_fig = go.Figure()
-        # co2_fig.add_trace(go.Scatter(
-        #     x=data['waktu'],
-        #     y=data['co2'],
-        #     mode='lines+markers',
-        #     name='CO2',
-        #     line=dict(color='#FF4B4B', width=2),
-        #     marker=dict(size=6)
-        # ))
-        # co2_fig.update_layout(
-        #     title="CO2 Trend",
-        #     xaxis=dict(title="Time"),
-        #     yaxis=dict(title="CO2 (mm)", range=[400, 1000]),
-        #     margin=dict(l=40, r=20, t=40, b=30),
-        #     height=300,
-        #     plot_bgcolor='rgba(240, 240, 240, 0.9)'
-        # )
+            co2_fig.add_annotation(
+                text=f"Error creating chart: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
         return co2_value, co2_fig
-
+    
     except Exception as e:
         print(f"Error in update_th_in_dashboard: {e}")
         # Return default values if there's an error
-        default_fig = go.Figure(layout=dict(title="Data Unavailable",
-                                            annotations=[
-                                                dict(text="Error loading data",
-                                                     xref="paper",
-                                                     yref="paper",
-                                                     x=0.5,
-                                                     y=0.5,
-                                                     showarrow=False)
-                                            ]))
+        default_fig = go.Figure(layout=dict(
+            title="Data Unavailable",
+            annotations=[dict(
+                text="Error loading data",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False
+            )]
+        ))
         return "N/A", default_fig
-
-
+    
 # Separate callback for PAR layout - Completely revised version
-@app_dash.callback([
-    Output({
-        'type': 'sensor-value',
-        'id': 'par-display'
-    },
-           'children',
-           allow_duplicate=True),
-    Output('par-graph', 'figure')
-], [Input('interval_par', 'n_intervals')],
-                   prevent_initial_call=True)
-def update_th_in_dashboard(n):
+@app_dash.callback(
+    [Output({'type': 'sensor-value', 'id': 'par-display'}, 'children', allow_duplicate=True),
+     Output('par-graph', 'figure')],
+    [Input('interval_par', 'n_intervals')],
+    prevent_initial_call=True
+)
+def update_par_dashboard(n):
     try:
-
-        # print(f"DEBUG: Data lengths - waktu: {len(data['waktu'] if 'waktu' in data else [])}, "
-        # f"suhu: {len(data['suhu'] if 'suhu' in data else [])}, "
-        # f"kelembaban: {len(data['kelembaban'] if 'kelembaban' in data else [])}")
-
         # Default values
         par_value = "N/A"
-
+        
         # Empty figures with proper layout
-        par_fig = go.Figure(
-            layout=dict(title="PAR Trend",
-                        xaxis=dict(title="Time"),
-                        yaxis=dict(title="PAR (μmol/m²/s)", range=[0, 400]),
-                        margin=dict(l=40, r=20, t=40, b=30),
-                        height=300,
-                        plot_bgcolor='rgba(240, 240, 240, 0.9)'))
-
+        par_fig = go.Figure(layout=dict(
+            title="PAR Trend",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="PAR (μmol/m²/s)", range=[0, 400]),
+            margin=dict(l=40, r=20, t=40, b=30),
+            height=300,
+            plot_bgcolor='rgba(240, 240, 240, 0.9)'
+        ))
+        
         # Check if we have data
         if not data['par'] or not data['waktu']:
             return par_value, par_fig
-
+        
         # Get the latest values
         par = data['par'][-1] if data['par'] else 0
         par_value = f"{par}μmol/m²/s"
-
+        
         # Create par graph with properly aligned x and y values
         par_fig = go.Figure()
 
         try:
             # Ensure we have data to work with
             if len(data['waktu']) > 3 and len(data['par']) > 3:
-                # Make sure x and y have the same length (this is crucial)
-                min_length = min(len(data['waktu']), len(data['par']))
-                timestamps = data['waktu'][:min_length]
-                par_values = data['par'][:min_length]
-
-                # Create evenly spaced x-indices
-                x_indices = list(range(min_length))
-
-                # Create interpolation points - keeping x as simple numeric indices
-                x_new = np.linspace(0, min_length - 1, num=300)
-
-                # Create the smooth interpolation
-                cs = interpolate.CubicSpline(x_indices,
-                                             par_values,
-                                             bc_type='natural')
-                y_smooth = cs(x_new)
-
-                # Add smooth curve with numeric x-axis
-                par_fig.add_trace(
-                    go.Scatter(
-                        x=x_new,  # Numeric x-axis
-                        y=y_smooth,
-                        mode='lines',
-                        line=dict(color='#4B86FF',
-                                  width=3,
-                                  shape='spline',
-                                  smoothing=1.3),
-                        fill='tozeroy',
-                        fillcolor='rgba(75, 134, 255, 0.2)',
-                        showlegend=False))
-
-                # Configure fixed x-axis ticks with actual timestamps
-                num_ticks = min(8, min_length)  # Show at most 8 ticks
-                tick_indices = np.linspace(0,
-                                           min_length - 1,
-                                           num_ticks,
-                                           dtype=int)
-                tick_labels = [timestamps[i] for i in tick_indices]
-
+                # We'll use only 3 data points for simplicity
+                num_points = 3
+                
+                # Select evenly spaced indices from the data
+                indices = np.linspace(0, min(len(data['waktu']), len(data['par']))-1, num_points, dtype=int)
+                
+                # Get the selected timestamps and temperature values
+                selected_timestamps = [data['waktu'][i] for i in indices]
+                selected_values = [data['par'][i] for i in indices]
+                
+                # Create x values (0, 1, 2) for plotting
+                x_plot = list(range(num_points))
+                
+                # Add the simplified line
+                par_fig.add_trace(go.Scatter(
+                    x=x_plot,  # Just use 0, 1, 2 for x values
+                    y=selected_values,
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3, shape='spline', smoothing=1.3),
+                    fill='tozeroy',
+                    fillcolor='rgba(75, 134, 255, 0.2)',
+                    showlegend=False
+                ))
+                
+                # Set up the axis with only 3 ticks
                 par_fig.update_layout(
                     title="PAR Trend",
                     xaxis=dict(
                         title="Time",
                         tickmode='array',
-                        tickvals=
-                        tick_indices,  # Use numeric values for tick positions
-                        ticktext=tick_labels,  # Use actual timestamps as labels
-                        tickangle=45),
+                        tickvals=x_plot,  # [0, 1, 2]
+                        ticktext=selected_timestamps,
+                        tickangle=0
+                    ),
                     yaxis=dict(title="PAR (μmol/m²/s)", range=[0, 400]),
-                    margin=dict(l=40, r=20, t=40,
-                                b=60),  # Extra space at bottom for labels
+                    margin=dict(l=40, r=20, t=40, b=30),
                     height=300,
                     plot_bgcolor='rgba(250, 250, 250, 0.9)',
-                    showlegend=False)
-
+                    showlegend=False
+                )
+                
             else:
                 # Fallback for insufficient data
-                par_fig.add_trace(
-                    go.Scatter(x=[0, 1],
-                               y=[0, 0],
-                               mode='lines',
-                               line=dict(color='#4B86FF', width=3),
-                               showlegend=False))
-                par_fig.update_layout(title="PAR Trend - Insufficient Data",
-                                      xaxis=dict(title="Time"),
-                                      yaxis=dict(title="PAR (μmol/m²/s)",
-                                                 range=[0, 100]),
-                                      height=300,
-                                      showlegend=False)
-
+                par_fig.add_trace(go.Scatter(
+                    x=[0, 1],
+                    y=[0, 0],
+                    mode='lines',
+                    line=dict(color='#4B86FF', width=3),
+                    showlegend=False
+                ))
+                par_fig.update_layout(
+                    title="PAR Trend - Insufficient Data",
+                    xaxis=dict(title="Time"),
+                    yaxis=dict(title="PAR (μmol/m²/s)", range=[0, 400]),
+                    height=300,
+                    showlegend=False
+                )
+                
         except Exception as e:
             print(f"Error creating par graph: {e}")
             # Create a basic empty chart if there's an error
             par_fig = go.Figure()
-            par_fig.add_annotation(text=f"Error creating chart: {str(e)}",
-                                   xref="paper",
-                                   yref="paper",
-                                   x=0.5,
-                                   y=0.5,
-                                   showarrow=False)
-        # Create Windspeed graph
-        # par_fig = go.Figure()
-        # par_fig.add_trace(go.Scatter(
-        #     x=data['waktu'],
-        #     y=data['par'],
-        #     mode='lines+markers',
-        #     name='Par',
-        #     line=dict(color='#FF4B4B', width=2),
-        #     marker=dict(size=6)
-        # ))
-        # par_fig.update_layout(
-        #     title="PAR Trend",
-        #     xaxis=dict(title="Time"),
-        #     yaxis=dict(title="PAR (μmol/m²/s)", range=[0, 400]),
-        #     margin=dict(l=40, r=20, t=40, b=30),
-        #     height=300,
-        #     plot_bgcolor='rgba(240, 240, 240, 0.9)'
-        # )
+            par_fig.add_annotation(
+                text=f"Error creating chart: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
         return par_value, par_fig
-
+    
     except Exception as e:
         print(f"Error in update_th_in_dashboard: {e}")
         # Return default values if there's an error
-        default_fig = go.Figure(layout=dict(title="Data Unavailable",
-                                            annotations=[
-                                                dict(text="Error loading data",
-                                                     xref="paper",
-                                                     yref="paper",
-                                                     x=0.5,
-                                                     y=0.5,
-                                                     showarrow=False)
-                                            ]))
+        default_fig = go.Figure(layout=dict(
+            title="Data Unavailable",
+            annotations=[dict(
+                text="Error loading data",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False
+            )]
+        ))
         return "N/A", default_fig
-
 
 # Add this function to help debug what's happening with your data
 # and the table th_in
-@app_dash.callback(Output('historical-table-th-in', 'data'),
-                   [Input('interval_thin', 'n_intervals')])
+@app_dash.callback(
+    Output('historical-table-th-in', 'data'),
+    [Input('interval_thin', 'n_intervals')]
+)
 def update_historical_table(n):
-    try:
-        # Print debug info to console
-        # print(f"Data lengths: waktu={len(data['waktu'])}, suhu={len(data['suhu'])}, kelembaban={len(data['kelembaban'])}")
-        # if data['waktu']:
-        #     print(f"Sample data: waktu={data['waktu'][-1]}, suhu={data['suhu'][-1]}, kelembaban={data['kelembaban'][-1]}")
-
-        # if not data['waktu']:
-        #     return [{}]
-
+    try:            
         # Create table data from the last 4 entries
-        sample_size = min(4, len(data['waktu']))
+        sample_size = min(2, len(data['waktu']))
         table_data = []
-
+        
         for i in range(sample_size):
-            idx = -(i + 1)  # Index from the end of the list
+            idx = -(i+1)  # Index from the end of the list
             table_data.append({
-                "time":
-                data['waktu'][idx] if idx < len(data['waktu']) else "",
-                "temperature_in_historical":
-                f"{data['suhu'][idx]:.1f}%" if idx < len(data['suhu']) else "",
-                "humidity_in_historical":
-                f"{data['kelembaban'][idx]:.1f}%"
-                if idx < len(data['kelembaban']) else ""
+                "time": data['waktu'][idx] if idx < len(data['waktu']) else "",
+                "temperature_in_historical": f"{data['suhu'][idx]:.1f}%" if idx < len(data['suhu']) else "",
+                "humidity_in_historical": f"{data['kelembaban'][idx]:.1f}%" if idx < len(data['kelembaban']) else ""
             })
-
+            
         return table_data
     except Exception as e:
         print(f"Error in update_historical_table: {e}")
         return [{}]
-
 
 # Callbacks for Dash app
 @app_dash.callback(Output("logout-redirect", "href"),
@@ -1540,4 +1223,4 @@ def logout_redirect(n_clicks):
 
 # Run server
 if __name__ == '__main__':
-    server.run(host='0.0.0.0', port=8080)
+    server.run(host='0.0.0.0', port=5000)
