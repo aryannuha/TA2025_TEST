@@ -1,6 +1,6 @@
 # Author: Ammar Aryan Nuha
 # Deklarasi library yang digunakan
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import dash
 import dash_bootstrap_components as dbc
@@ -100,7 +100,7 @@ app_dash = dash.Dash(__name__, server=server, url_base_pathname='/dash/', extern
  
 @app_dash.server.before_request
 def restrict_dash_pages():
-    if not current_user.is_authenticated and request.path.startswith('/dash'):
+    if request.path.startswith('/dash') and not session.get('_user_id'):
         return redirect(url_for('login'))
 
 # data storage
@@ -1179,4 +1179,4 @@ def logout_redirect(n_clicks):
 
 # Run server
 if __name__ == '__main__':
-    server.run(debug=True)
+    server.run(host='0.0.0.0', port=5000)
