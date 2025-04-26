@@ -79,7 +79,7 @@ th_out_layout = html.Div([
                         ],
                         data=[
                             # Empty rows for demonstration
-                            {} for _ in range(4)
+                            {} for _ in range(2)
                         ],
                         style_table={'overflowX': 'auto'},
                         style_cell={'textAlign': 'center', 'padding': '5px'},
