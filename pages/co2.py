@@ -79,15 +79,15 @@ co2_layout = html.Div([
                 
                 # Buttons
                 html.Div([
-                    html.Button("SETTING", className="btn btn-secondary m-1"),
+                    # html.Button("SETTING", className="btn btn-secondary m-1"),
                     dcc.Link("MCS", href="/dash/", className="btn btn-secondary m-1"),
                     dcc.Link("PAR", href="/dash/par", className="btn btn-secondary m-1"),
                     dcc.Link("RAINFALL", href="/dash/rainfall", className="btn btn-secondary m-1"),
                     dcc.Link("T&H INDOOR", href="/dash/th-in", className="btn btn-secondary m-1"),
                     dcc.Link("T&H OUTDOOR", href="/dash/th-out", className="btn btn-secondary m-1"),
                     dcc.Link("WINDSPEED", href="/dash/windspeed", className="btn btn-secondary m-1"),
-                    html.Button("LOGOUT", id="logout-button", className="btn btn-dark m-1"),
-                    dcc.Location(id="logout-redirect", refresh=True)  # Handles redirection
+                    html.Button("LOGIN", id="login-button", className="btn btn-dark m-1"),
+                    dcc.Location(id="login-redirect", refresh=True)  # Handles redirection
                 ], className="d-flex justify-content-end")
             ], width=6, className="ps-3")
         ])
