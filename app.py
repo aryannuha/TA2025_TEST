@@ -2,7 +2,6 @@
 # Deklarasi library yang digunakan
 from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-import pytz
 import dash
 import dash_bootstrap_components as dbc
 import secrets
@@ -24,6 +23,15 @@ from pages.windspeed import windspeed_layout
 from pages.rainfall import rainfall_layout  
 from pages.alarm import alarm_layout  
 from pages.gps import gps_layout  
+from engineer_pages.mcs_dashboard_eng import engineer_dashboard_layout
+from engineer_pages.co2_eng import engineer_co2_layout
+from engineer_pages.th_in_eng import engineer_th_in_layout
+from engineer_pages.th_out_eng import engineer_th_out_layout  
+from engineer_pages.par_eng import engineer_par_layout    
+from engineer_pages.windspeed_eng import engineer_windspeed_layout    
+from engineer_pages.rainfall_eng import engineer_rainfall_layout  
+from engineer_pages.alarm_eng import engineer_alarm_layout  
+from engineer_pages.gps_eng import engineer_gps_layout  
 
 # Initialize Flask app
 server = Flask(__name__)
@@ -42,9 +50,22 @@ pages = {
     "/dash/gps": gps_layout,
 }
 
+engineer_pages = {
+    "/dash/engineer/": engineer_dashboard_layout,
+    "/dash/engineer/co2": engineer_co2_layout,
+    "/dash/engineer/th-in": engineer_th_in_layout,
+    "/dash/engineer/th-out": engineer_th_out_layout,
+    "/dash/engineer/par": engineer_par_layout,
+    "/dash/engineer/windspeed": engineer_windspeed_layout,
+    "/dash/engineer/rainfall": engineer_rainfall_layout,
+    "/dash/engineer/alarm": engineer_alarm_layout,
+    "/dash/engineer/gps": engineer_gps_layout,
+}
+
 # Configure Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(server)
+login_manager.login_view = 'login'  # Specify the login route
 
 # User data for simplicity (use a database in production)
 users = {'engineer': {'password': 'engineer'}}
@@ -60,7 +81,8 @@ def load_user(user_id):
 # Flask routes
 @server.route('/')
 def home():
-    return redirect(url_for('login'))
+    # Public home page, redirects to guest dashboard
+    return redirect('/dash/')
 
 @server.route('/login', methods=['GET', 'POST'])
 def login():
@@ -78,22 +100,16 @@ def login():
 
     return render_template('login.html')
 
-
 @server.route('/dashboard')
 @login_required
 def dashboard():
     return render_template('dashboard.html', user=current_user.id)
 
-# @server.route('/dash/')
-# @login_required
-# def dash_home():
-#     return redirect('/dash/')
-
 @server.route('/logout')
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('login'))
+    return redirect('/')  # Redirect to public home page
 # end of flask route
 
 # Integrate Dash app
@@ -101,7 +117,7 @@ app_dash = dash.Dash(__name__, server=server, url_base_pathname='/dash/', extern
  
 @app_dash.server.before_request
 def restrict_dash_pages():
-    if request.path.startswith('/dash') and not session.get('_user_id'):
+    if request.path.startswith('/dash/engineer') and not session.get('_user_id'):
         return redirect(url_for('login'))
 
 # data storage
@@ -154,10 +170,8 @@ def on_message(client, userdata, msg):
     try:
         topic = msg.topic.split('/')[-1]  # Get the last part of the topic (e.g., 'suhu' from 'esp32/suhu')
         payload = float(msg.payload.decode())
-
-        # Replace 'Asia/Jakarta' with your desired timezone (e.g., your local timezone)
-        local_timezone = pytz.timezone('Asia/Jakarta')
-        current_time = datetime.now(pytz.utc).astimezone(local_timezone).strftime('%H:%M:%S')
+        
+        current_time = datetime.now().strftime('%H:%M:%S')
         
         # Initialize lists if they don't exist
         if topic in ['kodeDataSuhuIn', 'kodeDataKelembabanIn', 'kodeDataSuhuOut', 'kodeDataKelembabanOut',
@@ -201,8 +215,31 @@ app_dash.layout = html.Div([
     Output('page-content', 'children'),
     Input('url', 'pathname')
 )
-def render_page_content(pathname):
-    return pages.get(pathname, html.Div("404 - Page not found"))
+def display_page(pathname):
+    # Check if it's an engineer path
+    if pathname.startswith('/dash/engineer/'):
+        # Verify user is authenticated
+        if not current_user.is_authenticated:
+            return html.Div([
+                html.H3('Access Denied'),
+                html.P('Please log in as an engineer to access this page.'),
+                html.A('Login', href='/login', className='btn btn-primary')
+            ])
+        # Show engineer page if authenticated
+        if pathname in engineer_pages:
+            return engineer_pages[pathname]
+        # 404 for invalid engineer paths
+        return html.Div([
+            html.H3('404: Page not found'),
+            html.A('Go to engineer dashboard', href='/dash/engineer/')
+        ])
+    
+    # For guest paths (no authentication needed)
+    if pathname in pages:
+        return pages[pathname]
+    
+    # Default to guest homepage for unknown paths
+    return pages['/dash/']
 
 # Callback for main dashboard
 @app_dash.callback(
@@ -1170,7 +1207,7 @@ def update_historical_table(n):
         print(f"Error in update_historical_table: {e}")
         return [{}]
     
-# Callbacks for Dash app
+# Callbacks to logout
 @app_dash.callback(
     Output("logout-redirect", "href"),
     Input("logout-button", "n_clicks")
@@ -1178,6 +1215,16 @@ def update_historical_table(n):
 def logout_redirect(n_clicks):
     if n_clicks:
         return "/logout"  # Redirects to Flask route
+    return None
+
+# Callbacks to login
+@app_dash.callback(
+    Output("login-redirect", "href"),
+    Input("login-button", "n_clicks")
+)
+def login_redirect(n_clicks):
+    if n_clicks:
+        return "/login"  # Redirects to Flask route
     return None
 
 # Run server
