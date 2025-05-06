@@ -3,6 +3,7 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import dash
+import pytz
 import dash_bootstrap_components as dbc
 import secrets
 import paho.mqtt.client as mqtt
@@ -171,7 +172,7 @@ def on_message(client, userdata, msg):
         topic = msg.topic.split('/')[-1]  # Get the last part of the topic (e.g., 'suhu' from 'esp32/suhu')
         payload = float(msg.payload.decode())
         
-        current_time = datetime.now().strftime('%H:%M:%S')
+        current_time = datetime.now(tz=pytz.timezone('Asia/Jakarta')).strftime('%H:%M:%S')
         
         # Initialize lists if they don't exist
         if topic in ['kodeDataSuhuIn', 'kodeDataKelembabanIn', 'kodeDataSuhuOut', 'kodeDataKelembabanOut',
