@@ -10,6 +10,8 @@ import paho.mqtt.client as mqtt
 import plotly.graph_objects as go
 import threading
 import ssl
+import random
+import pandas as pd
 import numpy as np
 from scipy import interpolate
 from datetime import datetime
@@ -133,6 +135,37 @@ data = {
     'kodeDataRainfall': [],    # Rainfall values
     'kodeDataPar': []    # PAR values
 }
+
+# Define some locations in Bandung, Indonesia for demonstration
+LOCATIONS = [
+    {"name": "Bandung City Square", "lat": -6.921151, "lon": 107.607301},
+    {"name": "Gedung Sate", "lat": -6.902454, "lon": 107.618881},
+    {"name": "Dago Street", "lat": -6.893702, "lon": 107.613251},
+    {"name": "Bandung Station", "lat": -6.914744, "lon": 107.602458},
+    {"name": "Paris Van Java Mall", "lat": -6.888771, "lon": 107.595337}
+]
+
+# Coordinates for a device path simulation
+def generate_path_points(center_lat, center_lon, points=10, radius=0.005):
+    """Generate a path of points around a center location"""
+    path = []
+    for i in range(points):
+        # Create a small random deviation
+        lat_offset = radius * np.cos(i * 2 * np.pi / points)
+        lon_offset = radius * np.sin(i * 2 * np.pi / points)
+        
+        # Add small random noise
+        lat_noise = random.uniform(-0.0005, 0.0005)
+        lon_noise = random.uniform(-0.0005, 0.0005)
+        
+        path.append({
+            "lat": center_lat + lat_offset + lat_noise,
+            "lon": center_lon + lon_offset + lon_noise
+        })
+    return path
+
+# Generate a sample path
+PATH_POINTS = generate_path_points(-6.914744, 107.609810, points=20)
 
 # MQTT Configuration
 BROKER = "9a59e12602b646a292e7e66a5296e0ed.s1.eu.hivemq.cloud"
@@ -1227,6 +1260,113 @@ def login_redirect(n_clicks):
     if n_clicks:
         return "/login"  # Redirects to Flask route
     return None
+
+# Callback for GPS map
+@app_dash.callback(
+    [Output('gps-map', 'figure'),
+     Output('current-location-text', 'children'),
+     Output('current-coordinates', 'children')],
+    [Input('interval_gps', 'n_intervals')]
+)
+def update_gps_data(n_intervals):
+    """Update GPS map and location information"""
+    # If this is the first call or we need to reset, use a randomly selected location
+    if n_intervals is None or n_intervals % 20 == 0:
+        # Select a random location
+        current_location = random.choice(LOCATIONS)
+        current_lat = current_location["lat"]
+        current_lon = current_location["lon"]
+        location_name = current_location["name"]
+    else:
+        # Use a point from our simulated path
+        point_index = n_intervals % len(PATH_POINTS)
+        current_lat = PATH_POINTS[point_index]["lat"]
+        current_lon = PATH_POINTS[point_index]["lon"]
+        
+        # Find closest known location
+        min_distance = float('inf')
+        location_name = "Unknown Location"
+        for loc in LOCATIONS:
+            dist = ((loc["lat"] - current_lat)**2 + (loc["lon"] - current_lon)**2)**0.5
+            if dist < min_distance:
+                min_distance = dist
+                location_name = f"Near {loc['name']}"
+    
+    # Add some small random movement to make it look dynamic
+    jitter_lat = random.uniform(-0.0001, 0.0001)
+    jitter_lon = random.uniform(-0.0001, 0.0001)
+    
+    current_lat += jitter_lat
+    current_lon += jitter_lon
+    
+    # Create the map figure
+    fig = go.Figure()
+    
+    # Add main device marker
+    fig.add_trace(go.Scattermapbox(
+        lat=[current_lat],
+        lon=[current_lon],
+        mode='markers',
+        marker=dict(
+            size=15,
+            color='red',
+        ),
+        text=["Current Device Location"],
+        name="Device"
+    ))
+    
+    # Add known locations as reference points
+    fig.add_trace(go.Scattermapbox(
+        lat=[loc["lat"] for loc in LOCATIONS],
+        lon=[loc["lon"] for loc in LOCATIONS],
+        mode='markers',
+        marker=dict(
+            size=10,
+            color='blue',
+        ),
+        text=[loc["name"] for loc in LOCATIONS],
+        name="Reference Points"
+    ))
+    
+    # Add path history (last few points)
+    history_length = min(10, n_intervals if n_intervals else 0)
+    if history_length > 0:
+        path_indices = [(n_intervals - i) % len(PATH_POINTS) for i in range(1, history_length + 1)]
+        path_lats = [PATH_POINTS[i]["lat"] for i in path_indices]
+        path_lons = [PATH_POINTS[i]["lon"] for i in path_indices]
+        
+        fig.add_trace(go.Scattermapbox(
+            lat=path_lats,
+            lon=path_lons,
+            mode='lines',
+            line=dict(width=2, color='orange'),
+            name="Device Path"
+        ))
+    
+    # Configure the map layout
+    fig.update_layout(
+        mapbox=dict(
+            style="carto-positron",
+            center=dict(lat=current_lat, lon=current_lon),
+            zoom=14
+        ),
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=500,
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            bgcolor="rgba(255,255,255,0.8)"
+        ),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+    )
+    
+    # Format coordinates as a string with 6 decimal places
+    coordinates_text = f"{current_lat:.6f}, {current_lon:.6f}"
+    
+    return fig, location_name, coordinates_text
 
 # Run server
 if __name__ == '__main__':
