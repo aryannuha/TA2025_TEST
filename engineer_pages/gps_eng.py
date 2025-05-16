@@ -66,6 +66,7 @@ engineer_gps_layout = html.Div([
         # Button Section
         html.Div([
             html.Button("SETTING", className="btn btn-secondary m-1"),
+            dcc.Link("MCS", href="/dash/engineer/", className="btn btn-secondary m-1"),
             dcc.Link("T&H INDOOR", href="/dash/engineer/th-in", className="btn btn-secondary m-1"),
             dcc.Link("PAR", href="/dash/engineer/par", className="btn btn-secondary m-1"),
             dcc.Link("CO2", href="/dash/engineer/co2", className="btn btn-secondary m-1"),
