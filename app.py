@@ -133,7 +133,9 @@ data = {
     'kodeDataCo2': [],        # CO2 values
     'kodeDataWindspeed': [],  # Wind speed values
     'kodeDataRainfall': [],    # Rainfall values
-    'kodeDataPar': []    # PAR values
+    'kodeDataPar': [],    # PAR values
+    'kodeDataLat': [],   # Latitude values
+    'kodeDataLon': []    # Longitude values
 }
 
 # Define some locations in Bandung, Indonesia for demonstration
@@ -187,6 +189,8 @@ TOPIC_CO2 = "mcs/kodeDataCo2"
 TOPIC_WINDSPEED = "mcs/kodeDataWindspeed"
 TOPIC_RAINFALL = "mcs/kodeDataRainfall"
 TOPIC_PAR = "mcs/kodeDataPar"
+TOPIC_LAT = "mcs/kodeDataLat"
+TOPIC_LON = "mcs/kodeDataLon"
 
 # MQTT Callback
 def on_connect(client, userdata, flags, rc):
@@ -195,7 +199,8 @@ def on_connect(client, userdata, flags, rc):
         client.subscribe([(TOPIC_SUHU, 0), (TOPIC_KELEMBABAN, 0),
                           (TOPIC_SUHU_OUT, 0), (TOPIC_KELEMBABAN_OUT, 0),
                           (TOPIC_CO2, 0), (TOPIC_WINDSPEED, 0), 
-                          (TOPIC_RAINFALL, 0), (TOPIC_PAR, 0)])  # Subscribe ke topik suhu & kelembaban
+                          (TOPIC_RAINFALL, 0), (TOPIC_PAR, 0),
+                         (TOPIC_LAT, 0), (TOPIC_LON, 0)])  # Subscribe ke topik suhu & kelembaban
     else:
         print(f"Failed to connect, return code {rc}")
 
@@ -209,7 +214,8 @@ def on_message(client, userdata, msg):
         
         # Initialize lists if they don't exist
         if topic in ['kodeDataSuhuIn', 'kodeDataKelembabanIn', 'kodeDataSuhuOut', 'kodeDataKelembabanOut',
-                      'kodeDataCo2', 'kodeDataWindspeed', 'kodeDataRainfall', 'kodeDataPar']:
+                      'kodeDataCo2', 'kodeDataWindspeed', 'kodeDataRainfall', 'kodeDataPar',
+                    'kodeDataLat', 'kodeDataLon']:
             if len(data[topic]) >= 20:  # Keep only last 20 points
                 data[topic] = data[topic][1:]
             data[topic].append(payload)
@@ -1269,35 +1275,32 @@ def login_redirect(n_clicks):
     [Input('interval_gps', 'n_intervals')]
 )
 def update_gps_data(n_intervals):
-    """Update GPS map and location information"""
-    # If this is the first call or we need to reset, use a randomly selected location
-    if n_intervals is None or n_intervals % 20 == 0:
-        # Select a random location
-        current_location = random.choice(LOCATIONS)
-        current_lat = current_location["lat"]
-        current_lon = current_location["lon"]
-        location_name = current_location["name"]
-    else:
-        # Use a point from our simulated path
-        point_index = n_intervals % len(PATH_POINTS)
-        current_lat = PATH_POINTS[point_index]["lat"]
-        current_lon = PATH_POINTS[point_index]["lon"]
+    """Update GPS map and location information using MQTT data"""
+    # Add eFarming Corpora Community to LOCATIONS
+    efarming_location = {"name": "eFarming Corpora Community", "lat": -6.880044, "lon": 107.6772643}
+    
+    # Create a local copy of locations including eFarming
+    locations = LOCATIONS + [efarming_location]
+    
+    # Check if we have GPS data from MQTT
+    if data["kodeDataLat"] and data["kodeDataLon"]:
+        # Use the latest GPS coordinates from the MQTT data
+        current_lat = data["kodeDataLat"][-1]
+        current_lon = data["kodeDataLon"][-1]
         
         # Find closest known location
         min_distance = float('inf')
         location_name = "Unknown Location"
-        for loc in LOCATIONS:
+        for loc in locations:
             dist = ((loc["lat"] - current_lat)**2 + (loc["lon"] - current_lon)**2)**0.5
             if dist < min_distance:
                 min_distance = dist
                 location_name = f"Near {loc['name']}"
-    
-    # Add some small random movement to make it look dynamic
-    jitter_lat = random.uniform(-0.0001, 0.0001)
-    jitter_lon = random.uniform(-0.0001, 0.0001)
-    
-    current_lat += jitter_lat
-    current_lon += jitter_lon
+    else:
+        # Fallback if no MQTT data is available
+        current_lat = efarming_location["lat"]
+        current_lon = efarming_location["lon"]
+        location_name = "eFarming Corpora Community"
     
     # Create the map figure
     fig = go.Figure()
@@ -1317,38 +1320,39 @@ def update_gps_data(n_intervals):
     
     # Add known locations as reference points
     fig.add_trace(go.Scattermapbox(
-        lat=[loc["lat"] for loc in LOCATIONS],
-        lon=[loc["lon"] for loc in LOCATIONS],
+        lat=[loc["lat"] for loc in locations],
+        lon=[loc["lon"] for loc in locations],
         mode='markers',
         marker=dict(
             size=10,
             color='blue',
         ),
-        text=[loc["name"] for loc in LOCATIONS],
+        text=[loc["name"] for loc in locations],
         name="Reference Points"
     ))
     
     # Add path history (last few points)
-    history_length = min(10, n_intervals if n_intervals else 0)
-    if history_length > 0:
-        path_indices = [(n_intervals - i) % len(PATH_POINTS) for i in range(1, history_length + 1)]
-        path_lats = [PATH_POINTS[i]["lat"] for i in path_indices]
-        path_lons = [PATH_POINTS[i]["lon"] for i in path_indices]
+    # history_length = min(10, len(data["kodeDataLat"]))
+    # if history_length > 1:
+    #     # Get the last few GPS points from the MQTT data
+    #     path_lats = data["kodeDataLat"][-history_length:]
+    #     path_lons = data["kodeDataLon"][-history_length:]
         
-        fig.add_trace(go.Scattermapbox(
-            lat=path_lats,
-            lon=path_lons,
-            mode='lines',
-            line=dict(width=2, color='orange'),
-            name="Device Path"
-        ))
+    #     fig.add_trace(go.Scattermapbox(
+    #         lat=path_lats,
+    #         lon=path_lons,
+    #         mode='lines',
+    #         line=dict(width=2, color='orange'),
+    #         name="Device Path"
+    #     ))
     
     # Configure the map layout
     fig.update_layout(
         mapbox=dict(
-            style="carto-positron",
-            center=dict(lat=current_lat, lon=current_lon),
-            zoom=14
+            style="open-street-map",
+            center=dict(lat=current_lat, lon=current_lon),  # Center on current coordinates
+            zoom=15,  # Default zoom level (slightly zoomed in)
+            uirevision=f"{current_lat}_{current_lon}"  # Preserve zoom level while centered on current point
         ),
         margin=dict(l=0, r=0, t=0, b=0),
         height=500,
