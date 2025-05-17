@@ -3,6 +3,9 @@
 from dash import dcc, html, dash_table
 import dash_bootstrap_components as dbc
 
+# IP WebServer
+ESP_IP = "http://192.168.0.240"
+
 engineer_dashboard_layout = html.Div([
     # NAVBAR
     html.Div([
@@ -103,6 +106,7 @@ engineer_dashboard_layout = html.Div([
                 # Button Section
                 html.Div([
                     html.Button("SETTING", className="btn btn-secondary m-1"),
+                    html.A("DOWNLOAD", href=f"{ESP_IP}/download", className="btn btn-secondary m-1", target="_blank"),
                     dcc.Link("T&H INDOOR", href="/dash/engineer/th-in", className="btn btn-secondary m-1"),
                     dcc.Link("PAR", href="/dash/engineer/par", className="btn btn-secondary m-1"),
                     dcc.Link("CO2", href="/dash/engineer/co2", className="btn btn-secondary m-1"),
